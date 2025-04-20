@@ -13,7 +13,9 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  final List<Transaction> transactions = [
+  bool showWeekly = false;
+
+  final List<Transaction> allTransactions = [
     Transaction(
       category: 'Food',
       subCategory: 'Groceries',
@@ -35,21 +37,35 @@ class _HomeScreenState extends State<HomeScreen> {
       subCategory: 'Electricity',
       name: 'BESCOM Bill',
       amount: 800,
-      date: DateTime.now().subtract(const Duration(days: 2)),
+      date: DateTime.now().subtract(const Duration(days: 8)),
       account: 'Bank',
     ),
   ];
 
   void _addNewTransaction(Transaction newTxn) {
     setState(() {
-      transactions.insert(0, newTxn);
+      allTransactions.insert(0, newTxn);
     });
   }
 
-  List<ChartData> _generateChartData() {
-    final Map<String, double> categoryTotals = {};
+  List<Transaction> _filteredTransactions() {
+    final now = DateTime.now();
 
-    for (var txn in transactions) {
+    return allTransactions.where((txn) {
+      if (showWeekly) {
+        final startOfWeek = now.subtract(Duration(days: now.weekday - 1));
+        return txn.date.isAfter(startOfWeek.subtract(const Duration(days: 1))) &&
+            txn.date.month == now.month &&
+            txn.date.year == now.year;
+      } else {
+        return txn.date.month == now.month && txn.date.year == now.year;
+      }
+    }).toList();
+  }
+
+  List<ChartData> _generateChartData(List<Transaction> txns) {
+    final Map<String, double> categoryTotals = {};
+    for (var txn in txns) {
       categoryTotals[txn.category] =
           (categoryTotals[txn.category] ?? 0) + txn.amount;
     }
@@ -61,13 +77,14 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final chartData = _generateChartData();
+    final filteredTxns = _filteredTransactions();
+    final chartData = _generateChartData(filteredTxns);
 
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
         title: const Text('Home'),
-        backgroundColor: Colors.grey[900],
+        backgroundColor: Colors.black,
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -76,11 +93,19 @@ class _HomeScreenState extends State<HomeScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                ExpensePieChart(chartData: chartData),
+                ExpensePieChart(
+                  chartData: chartData,
+                  showWeekly: showWeekly,
+                  onToggle: () {
+                    setState(() {
+                      showWeekly = !showWeekly;
+                    });
+                  },
+                ),
                 const SizedBox(height: 20),
-                const Text(
-                  'Recent Transactions',
-                  style: TextStyle(
+                Text(
+                  showWeekly ? 'This Week\'s Transactions' : 'This Month\'s Transactions',
+                  style: const TextStyle(
                     color: Colors.white,
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
@@ -90,22 +115,21 @@ class _HomeScreenState extends State<HomeScreen> {
                 ListView.builder(
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
-                  itemCount: transactions.length,
+                  itemCount: filteredTxns.length,
                   itemBuilder: (context, index) {
-                    final txn = transactions[index];
+                    final txn = filteredTxns[index];
                     return Card(
                       color: Colors.grey[900],
                       margin: const EdgeInsets.symmetric(vertical: 6),
                       child: ListTile(
                         onLongPress: () {
                           setState(() {
-                            transactions.removeAt(index);
+                            allTransactions.remove(txn);
                           });
                         },
-                        leading: const Icon(Icons.account_balance_wallet,
-                            color: Colors.white),
+                        leading: const Icon(Icons.account_balance_wallet, color: Colors.white),
                         title: Text(
-                          txn.name ?? 'No Name',
+                          txn.name,
                           style: const TextStyle(color: Colors.white),
                         ),
                         subtitle: Text(
@@ -115,8 +139,9 @@ class _HomeScreenState extends State<HomeScreen> {
                         trailing: Text(
                           '-₹${txn.amount.toStringAsFixed(0)}',
                           style: const TextStyle(
-                              color: Colors.redAccent,
-                              fontWeight: FontWeight.bold),
+                            color: Colors.redAccent,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
                     );
