@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "1033774163891",
+    "project_id": "expence-manager-1",
+    "storage_bucket": "expence-manager-1.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1033774163891:android:ae462eec94404a07a48dc6",
+        "android_client_info": {
+          "package_name": "com.example.testing_exp_1"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1033774163891-0491c0bool5dentnv07vnsdrdm3h43bp.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.testing_exp_1",
+            "certificate_hash": "ecc155d59a47c43494e0364aea18b11a46f789f7"
+          }
+        },
+        {
+          "client_id": "1033774163891-7aijhml0etvemgakok3h4ro4pm7gdgjp.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBFzP_NqCkIdQVyjJuZpZv3psdNoLzM9lc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1033774163891-7aijhml0etvemgakok3h4ro4pm7gdgjp.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

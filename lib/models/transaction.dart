@@ -4,12 +4,16 @@ class Transaction {
   final String name;
   final double amount;
   final DateTime date;
+  final String? description;
+  final String account;
 
   Transaction({
     required this.category,
-    required this.subCategory,
+    this.subCategory,
     required this.name,
     required this.amount,
     required this.date,
+    this.description,
+    required this.account,
   });
 }

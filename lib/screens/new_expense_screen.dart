@@ -7,14 +7,12 @@ class NewExpenseScreen extends StatefulWidget {
   @override
   State<NewExpenseScreen> createState() => _NewExpenseScreenState();
 }
-
 class _NewExpenseScreenState extends State<NewExpenseScreen> {
   DateTime _selectedDateTime = DateTime.now();
   final TextEditingController _amountController = TextEditingController();
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
 
-  //testing purpos data
   Map<String, List<String>> categoryMap = {
     'Food': ['KFC', 'Snacks', 'Lunch', 'Dinner', 'Breakfast', 'Burger King'],
     'Travel': ['Bus', 'Cab', 'Train'],
@@ -27,6 +25,7 @@ class _NewExpenseScreenState extends State<NewExpenseScreen> {
 
   List<String> accountOptions = ['Cash', 'Bank Account'];
   String? selectedAccount;
+
 
   Future<void> _pickDateTime() async {
     final DateTime? pickedDate = await showDatePicker(
@@ -116,7 +115,8 @@ class _NewExpenseScreenState extends State<NewExpenseScreen> {
             TextButton(
               onPressed: () {
                 String newSubcategory = _subCategoryController.text.trim();
-                if (newSubcategory.isNotEmpty && !categoryMap[selectedCategory]!.contains(newSubcategory)) {
+                if (newSubcategory.isNotEmpty &&
+                    !categoryMap[selectedCategory]!.contains(newSubcategory)) {
                   setState(() {
                     categoryMap[selectedCategory]!.add(newSubcategory);
                     selectedSubcategory = newSubcategory;
@@ -161,7 +161,6 @@ class _NewExpenseScreenState extends State<NewExpenseScreen> {
             ),
             const SizedBox(height: 16),
 
-            // Amount
             TextField(
               controller: _amountController,
               keyboardType: TextInputType.number,
@@ -172,7 +171,6 @@ class _NewExpenseScreenState extends State<NewExpenseScreen> {
             ),
             const SizedBox(height: 16),
 
-            // Expense Name
             TextField(
               controller: _nameController,
               style: const TextStyle(color: Colors.white),
@@ -181,6 +179,7 @@ class _NewExpenseScreenState extends State<NewExpenseScreen> {
               ),
             ),
             const SizedBox(height: 16),
+
             Row(
               children: [
                 Expanded(
@@ -269,6 +268,7 @@ class _NewExpenseScreenState extends State<NewExpenseScreen> {
               style: const TextStyle(color: Colors.white),
             ),
             const SizedBox(height: 16),
+
             TextField(
               controller: _descriptionController,
               style: const TextStyle(color: Colors.white),
@@ -276,11 +276,14 @@ class _NewExpenseScreenState extends State<NewExpenseScreen> {
                 labelText: "Description (Optional)",
               ),
               maxLines: 2,
-            ) ,
+            ),
             const SizedBox(height: 24),
+
             ElevatedButton(
               onPressed: () {
-                if (_amountController.text.isEmpty || selectedCategory == null || selectedAccount == null) {
+                if (_amountController.text.isEmpty ||
+                    selectedCategory == null ||
+                    selectedAccount == null) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
                       content: Text("Please fill all the required fields."),
@@ -295,8 +298,9 @@ class _NewExpenseScreenState extends State<NewExpenseScreen> {
                   name: _nameController.text,
                   amount: double.tryParse(_amountController.text) ?? 0,
                   date: _selectedDateTime,
+                  description: _descriptionController.text,
+                  account: selectedAccount!, // ✅ Fixed here
                 );
-
                 Navigator.pop(context, newTransaction);
               },
               style: ElevatedButton.styleFrom(

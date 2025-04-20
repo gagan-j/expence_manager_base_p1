@@ -1,0 +1,2 @@
+C:/Users/yet33/coding_pp/projects_/testing_exp_1/android/app/.cxx/RelWithDebInfo/2c46374n/x86/CMakeFiles/edit_cache.dir
+C:/Users/yet33/coding_pp/projects_/testing_exp_1/android/app/.cxx/RelWithDebInfo/2c46374n/x86/CMakeFiles/rebuild_cache.dir
