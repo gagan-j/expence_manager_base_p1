@@ -22,7 +22,7 @@ class _MainNavigationState extends State<MainNavigation> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: _screens[_currentIndex],
+      body: _buildFadeScreen(_screens[_currentIndex]),
       bottomNavigationBar: BottomNavigationBar(
         backgroundColor: Colors.grey[900],
         currentIndex: _currentIndex,
@@ -48,6 +48,20 @@ class _MainNavigationState extends State<MainNavigation> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildFadeScreen(Widget screen) {
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 300),
+      transitionBuilder: (Widget child, Animation<double> animation) {
+        final fadeInAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(animation);
+        return FadeTransition(
+          opacity: fadeInAnimation,
+          child: child,
+        );
+      },
+      child: screen,
     );
   }
 }

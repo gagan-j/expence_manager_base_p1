@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'home_screen.dart';
+import 'main_navigation.dart'; // <-- updated import
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -14,9 +14,7 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _isSigningIn = false;
 
   Future<void> signInWithGoogle() async {
-    setState(() {
-      _isSigningIn = true;
-    });
+    setState(() => _isSigningIn = true);
 
     try {
       final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
@@ -25,8 +23,7 @@ class _LoginScreenState extends State<LoginScreen> {
         return; // user canceled
       }
 
-      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
-
+      final googleAuth = await googleUser.authentication;
       final credential = GoogleAuthProvider.credential(
         accessToken: googleAuth.accessToken,
         idToken: googleAuth.idToken,
@@ -37,7 +34,7 @@ class _LoginScreenState extends State<LoginScreen> {
       if (context.mounted) {
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => const HomeScreen()),
+          MaterialPageRoute(builder: (context) => const MainNavigation()),
         );
       }
     } catch (e) {
@@ -47,6 +44,7 @@ class _LoginScreenState extends State<LoginScreen> {
       setState(() => _isSigningIn = false);
     }
   }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(

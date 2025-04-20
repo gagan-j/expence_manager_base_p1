@@ -9,7 +9,7 @@ class AccountsScreen extends StatelessWidget {
       backgroundColor: Colors.black,
       appBar: AppBar(
         title: const Text('Accounts'),
-        backgroundColor: Colors.grey[900],
+        backgroundColor: Colors.black,
       ),
       body: const Center(
         child: Text(

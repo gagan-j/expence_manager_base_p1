@@ -4,6 +4,10 @@ import '../models/chart_data.dart';
 import '../models/transaction.dart';
 import '../widgets/pie_chart.dart';
 import 'new_expense_screen.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+import 'package:animations/animations.dart';
+
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -102,6 +106,15 @@ class _HomeScreenState extends State<HomeScreen> {
                     });
                   },
                 ),
+
+                ElevatedButton(
+                  onPressed: () async {
+                    await FirebaseAuth.instance.signOut();
+                    await GoogleSignIn().signOut();
+                  },
+                  child: Text('Logout'),
+                ),
+
                 const SizedBox(height: 20),
                 Text(
                   showWeekly ? 'This Week\'s Transactions' : 'This Month\'s Transactions',
@@ -152,20 +165,29 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: Colors.grey[400],
-        child: const Icon(Icons.add, color: Colors.black),
-        onPressed: () async {
-          final newTxn = await Navigator.push<Transaction>(
-            context,
-            MaterialPageRoute(builder: (context) => NewExpenseScreen()),
-          );
 
-          if (newTxn != null) {
-            _addNewTransaction(newTxn);
-          }
-        },
-      ),
+
+    floatingActionButton: OpenContainer(
+    transitionType: ContainerTransitionType.fadeThrough,
+      transitionDuration: const Duration(milliseconds: 500),
+      openBuilder: (context, _) => const NewExpenseScreen(),
+      closedElevation: 6.0,
+      closedShape: const CircleBorder(),
+      closedColor: Colors.grey[400]!,
+      closedBuilder: (context, openContainer) {
+        return FloatingActionButton(
+          onPressed: openContainer,
+          backgroundColor: Colors.grey[400],
+          child: const Icon(Icons.add, color: Colors.black),
+        );
+      },
+      onClosed: (result) {
+        if (result != null && result is Transaction) {
+          _addNewTransaction(result);
+        }
+      },
+    ),
+
     );
   }
 }
