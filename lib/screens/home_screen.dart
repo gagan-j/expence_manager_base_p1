@@ -84,11 +84,6 @@ class _HomeScreenState extends State<HomeScreen> {
     final filteredTxns = _filteredTransactions();
     final chartData = _generateChartData(filteredTxns);
 
-    // Mocked totals (replace this with real income/expense logic later)
-    double income = 3000;
-    double expense = 1000;
-    double total = income + expense;
-    double incomePercent = total == 0 ? 0.5 : income / total;
 
     return Scaffold(
       backgroundColor: Colors.black,
