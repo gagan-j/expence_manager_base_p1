@@ -84,6 +84,12 @@ class _HomeScreenState extends State<HomeScreen> {
     final filteredTxns = _filteredTransactions();
     final chartData = _generateChartData(filteredTxns);
 
+    // Mocked totals (replace this with real income/expense logic later)
+    double income = 3000;
+    double expense = 1000;
+    double total = income + expense;
+    double incomePercent = total == 0 ? 0.5 : income / total;
+
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
@@ -107,14 +113,24 @@ class _HomeScreenState extends State<HomeScreen> {
                   },
                 ),
 
+                const SizedBox(height: 16),
+                const Text(
+                  'Income vs Expense',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+
+                const SizedBox(height: 30),
                 ElevatedButton(
                   onPressed: () async {
                     await FirebaseAuth.instance.signOut();
                     await GoogleSignIn().signOut();
                   },
-                  child: Text('Logout'),
+                  child: const Text('Logout'),
                 ),
-
                 const SizedBox(height: 20),
                 Text(
                   showWeekly ? 'This Week\'s Transactions' : 'This Month\'s Transactions',
@@ -165,29 +181,26 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
       ),
-
-
-    floatingActionButton: OpenContainer(
-    transitionType: ContainerTransitionType.fadeThrough,
-      transitionDuration: const Duration(milliseconds: 500),
-      openBuilder: (context, _) => const NewExpenseScreen(),
-      closedElevation: 6.0,
-      closedShape: const CircleBorder(),
-      closedColor: Colors.grey[400]!,
-      closedBuilder: (context, openContainer) {
-        return FloatingActionButton(
-          onPressed: openContainer,
-          backgroundColor: Colors.grey[400],
-          child: const Icon(Icons.add, color: Colors.black),
-        );
-      },
-      onClosed: (result) {
-        if (result != null && result is Transaction) {
-          _addNewTransaction(result);
-        }
-      },
-    ),
-
+      floatingActionButton: OpenContainer(
+        transitionType: ContainerTransitionType.fadeThrough,
+        transitionDuration: const Duration(milliseconds: 500),
+        openBuilder: (context, _) => const NewExpenseScreen(),
+        closedElevation: 6.0,
+        closedShape: const CircleBorder(),
+        closedColor: Colors.grey[400]!,
+        closedBuilder: (context, openContainer) {
+          return FloatingActionButton(
+            onPressed: openContainer,
+            backgroundColor: Colors.grey[400],
+            child: const Icon(Icons.add, color: Colors.black),
+          );
+        },
+        onClosed: (result) {
+          if (result != null && result is Transaction) {
+            _addNewTransaction(result);
+          }
+        },
+      ),
     );
   }
 }
