@@ -53,7 +53,7 @@ class _MainNavigationState extends State<MainNavigation> {
 
   Widget _buildFadeScreen(Widget screen) {
     return AnimatedSwitcher(
-      duration: const Duration(milliseconds: 300),
+      duration: const Duration(milliseconds: 200),
       transitionBuilder: (Widget child, Animation<double> animation) {
         final fadeInAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(animation);
         return FadeTransition(
