@@ -1,53 +1,76 @@
-class Transaction {
-  int? id; // Optional 'id' field
-  final String category;
-  final String? subCategory;
+// Note: Renamed from Transaction to ExpenseTransaction to avoid naming conflicts
+class ExpenseTransaction {
+  final int? id;
   final String name;
   final double amount;
+  final String category;
+  final String? subCategory;
   final DateTime date;
+  final String type; // 'income' or 'expense'
   final String? description;
   final String account;
-  final String type; // New field: 'expense' or 'income'
 
-  Transaction({
-    this.id, // 'id' is optional
-    required this.category,
-    this.subCategory,
+  ExpenseTransaction({
+    this.id,
     required this.name,
     required this.amount,
+    required this.category,
+    this.subCategory,
     required this.date,
+    required this.type,
     this.description,
     required this.account,
-    this.type = 'expense', // Default to expense
   });
 
-  // Convert Transaction to Map for inserting into the database
   Map<String, dynamic> toMap() {
     return {
-      'id': id, // Include 'id' if it exists
-      'category': category,
-      'subCategory': subCategory,
+      if (id != null) 'id': id,
       'name': name,
       'amount': amount,
+      'category': category,
+      'subCategory': subCategory,
       'date': date.toIso8601String(),
+      'type': type,
       'description': description,
       'account': account,
-      'type': type, // Include the type
     };
   }
 
-  // Convert Map to Transaction object
-  static Transaction fromMap(Map<String, dynamic> map) {
-    return Transaction(
-      id: map['id'] as int?, // Fetch 'id' from the map if available
-      category: map['category'] as String,
-      subCategory: map['subCategory'] as String?,
-      name: map['name'] as String,
-      amount: map['amount'] as double,
-      date: DateTime.parse(map['date'] as String),
-      description: map['description'] as String?,
-      account: map['account'] as String,
-      type: map['type'] as String? ?? 'expense', // Default to expense if not specified
+  static ExpenseTransaction fromMap(Map<String, dynamic> map) {
+    return ExpenseTransaction(
+      id: map['id'],
+      name: map['name'],
+      amount: map['amount'],
+      category: map['category'],
+      subCategory: map['subCategory'],
+      date: DateTime.parse(map['date']),
+      type: map['type'],
+      description: map['description'],
+      account: map['account'],
+    );
+  }
+
+  ExpenseTransaction copyWith({
+    int? id,
+    String? name,
+    double? amount,
+    String? category,
+    String? subCategory,
+    DateTime? date,
+    String? type,
+    String? description,
+    String? account,
+  }) {
+    return ExpenseTransaction(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      amount: amount ?? this.amount,
+      category: category ?? this.category,
+      subCategory: subCategory ?? this.subCategory,
+      date: date ?? this.date,
+      type: type ?? this.type,
+      description: description ?? this.description,
+      account: account ?? this.account,
     );
   }
 }

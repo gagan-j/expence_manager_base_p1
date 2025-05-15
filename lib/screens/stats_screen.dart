@@ -3,7 +3,7 @@ import 'package:intl/intl.dart';
 import '../models/chart_data.dart';
 import '../models/transaction.dart';
 import '../widgets/pie_chart.dart';
-import '../db/db_helper.dart';
+import '../services/transaction_service.dart';
 
 class StatsScreen extends StatefulWidget {
   const StatsScreen({super.key});
@@ -16,47 +16,64 @@ class _StatsScreenState extends State<StatsScreen> {
   bool showWeekly = false;
   List<Transaction> allTransactions = [];
   bool _isLoading = false;
+  final TransactionService _transactionService = TransactionService();
+  FinancialSummary _summary = FinancialSummary(totalIncome: 0, totalExpense: 0, netWorth: 0);
 
   @override
   void initState() {
     super.initState();
-    _loadTransactions();
+    _loadData();
+
+    // Subscribe to updates
+    _transactionService.transactionsStream.listen((transactions) {
+      if (mounted) {
+        setState(() {
+          allTransactions = transactions;
+        });
+      }
+    });
+
+    _transactionService.summaryStream.listen((summary) {
+      if (mounted) {
+        setState(() {
+          _summary = summary;
+        });
+      }
+    });
   }
 
-  Future<void> _loadTransactions() async {
+  Future<void> _loadData() async {
+    if (!mounted) return;
+
     setState(() {
       _isLoading = true;
     });
 
     try {
-      final transactions = await DBHelper.instance.fetchTransactions();
+      await _transactionService.fetchTransactions();
+      await _transactionService.fetchAccounts();
+
       setState(() {
-        allTransactions = transactions;
+        allTransactions = _transactionService.allTransactions;
       });
-      print('Loaded ${transactions.length} transactions');
     } catch (e) {
-      print('Error loading transactions: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to load transactions: $e')),
-      );
+      print('Error loading data: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to load data: $e')),
+        );
+      }
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
   List<Transaction> _filteredTransactions() {
-    final now = DateTime.now();
-
-    return allTransactions.where((txn) {
-      if (showWeekly) {
-        final startOfWeek = now.subtract(Duration(days: now.weekday - 1));
-        return txn.date.isAfter(startOfWeek.subtract(const Duration(days: 1)));
-      } else {
-        return txn.date.month == now.month && txn.date.year == now.year;
-      }
-    }).toList();
+    return _transactionService.getFilteredTransactions(weekly: showWeekly);
   }
 
   List<ChartData> _generateChartData(List<Transaction> txns) {
@@ -70,18 +87,6 @@ class _StatsScreenState extends State<StatsScreen> {
     return categoryTotals.entries
         .map((entry) => ChartData(category: entry.key, amount: entry.value))
         .toList();
-  }
-
-  double get _totalIncome {
-    return allTransactions
-        .where((txn) => txn.type == 'income')
-        .fold(0, (sum, txn) => sum + txn.amount);
-  }
-
-  double get _totalExpense {
-    return allTransactions
-        .where((txn) => txn.type == 'expense')
-        .fold(0, (sum, txn) => sum + txn.amount);
   }
 
   // Monthly stats
@@ -156,7 +161,7 @@ class _StatsScreenState extends State<StatsScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: _loadTransactions,
+            onPressed: _loadData,
             tooltip: 'Refresh data',
           ),
         ],
@@ -165,7 +170,7 @@ class _StatsScreenState extends State<StatsScreen> {
           ? const Center(child: CircularProgressIndicator())
           : SafeArea(
         child: RefreshIndicator(
-          onRefresh: _loadTransactions,
+          onRefresh: _loadData,
           color: Colors.white,
           backgroundColor: Colors.grey[900],
           child: SingleChildScrollView(
@@ -200,7 +205,7 @@ class _StatsScreenState extends State<StatsScreen> {
                                 children: [
                                   const Text("Income",
                                       style: TextStyle(color: Colors.white70)),
-                                  Text("₹${_totalIncome.toStringAsFixed(2)}",
+                                  Text("₹${_summary.totalIncome.toStringAsFixed(2)}",
                                       style: const TextStyle(color: Colors.green)),
                                 ],
                               ),
@@ -209,7 +214,7 @@ class _StatsScreenState extends State<StatsScreen> {
                                 children: [
                                   const Text("Expense",
                                       style: TextStyle(color: Colors.white70)),
-                                  Text("₹${_totalExpense.toStringAsFixed(2)}",
+                                  Text("₹${_summary.totalExpense.toStringAsFixed(2)}",
                                       style: const TextStyle(color: Colors.red)),
                                 ],
                               ),
@@ -217,8 +222,8 @@ class _StatsScreenState extends State<StatsScreen> {
                           ),
                           const SizedBox(height: 16),
                           LinearProgressIndicator(
-                            value: _totalExpense > 0 && _totalIncome > 0
-                                ? _totalExpense / (_totalIncome + _totalExpense)
+                            value: _summary.totalExpense > 0 && _summary.totalIncome > 0
+                                ? _summary.totalExpense / (_summary.totalIncome + _summary.totalExpense)
                                 : 0.5,
                             backgroundColor: Colors.green.withOpacity(0.3),
                             valueColor: AlwaysStoppedAnimation<Color>(
@@ -226,9 +231,9 @@ class _StatsScreenState extends State<StatsScreen> {
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            "Balance: ₹${(_totalIncome - _totalExpense).toStringAsFixed(2)}",
+                            "Balance: ₹${_summary.balance.toStringAsFixed(2)}",
                             style: TextStyle(
-                              color: _totalIncome >= _totalExpense ? Colors.green : Colors.red,
+                              color: _summary.balance >= 0 ? Colors.green : Colors.red,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -346,7 +351,7 @@ class _StatsScreenState extends State<StatsScreen> {
     );
   }
 
-  // Completely redesigned trend section with fixed heights to prevent overflow
+  // Trend section with fixed heights to prevent overflow
   Widget _buildFlatTrendSection(String title, Map<String, double> data, Color color) {
     // Get the maximum value for reference
     final double maxValue = data.values.fold(0.0, (max, value) => value > max ? value : max);

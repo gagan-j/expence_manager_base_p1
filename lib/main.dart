@@ -3,17 +3,18 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'screens/login_screen.dart';
 import 'screens/main_navigation.dart';
-import 'db/db_helper.dart';
+import 'services/transaction_service.dart';
+import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'services/transaction_service.dart';
+
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
 
-  // Initialize database
-  print('Initializing database...');
-  await DBHelper.instance.db;
-  await DBHelper.instance.insertDefaultAccounts();
-  print('Database initialized successfully');
+  // Initialize the transaction service
+  await TransactionService().initialize();
 
   runApp(const MyApp());
 }
@@ -27,23 +28,23 @@ class MyApp extends StatelessWidget {
       title: 'Expense Manager',
       theme: ThemeData.dark().copyWith(
         scaffoldBackgroundColor: Colors.black,
-        textTheme: const TextTheme(bodyMedium: TextStyle(color: Colors.white)),
-        appBarTheme: const AppBarTheme(backgroundColor: Colors.black),
-        floatingActionButtonTheme: const FloatingActionButtonThemeData(
-          backgroundColor: Colors.white,
-          foregroundColor: Colors.black,
+        primaryColor: Colors.deepPurple,
+        colorScheme: const ColorScheme.dark().copyWith(
+          primary: Colors.deepPurple,
+          secondary: Colors.deepPurpleAccent,
         ),
       ),
-      debugShowCheckedModeBanner: false,
       home: StreamBuilder<User?>(
         stream: FirebaseAuth.instance.authStateChanges(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
-          } else if (snapshot.hasData) {
-            return const MainNavigation(); // User is signed in
+          } else if (snapshot.hasData && snapshot.data != null) {
+            // User is logged in
+            return const MainNavigation();
           } else {
-            return const LoginScreen(); // User is NOT signed in
+            // User is not logged in
+            return const LoginScreen();
           }
         },
       ),
