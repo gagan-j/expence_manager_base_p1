@@ -1,10 +1,10 @@
-import 'package:animations/animations.dart'; // Add this import
 import 'package:flutter/material.dart';
-import 'home_screen.dart';
-import 'stats_screen.dart';
-import 'accounts_screen.dart';
-import 'settings_screen.dart';
-import 'new_expense_screen.dart';
+// Make sure these imports match your actual file locations
+import './home_screen.dart';
+import './stats_screen.dart';
+import './accounts_screen.dart';
+import './settings_screen.dart';
+import './new_expense_screen.dart';
 
 class MainNavigation extends StatefulWidget {
   const MainNavigation({Key? key}) : super(key: key);
@@ -17,6 +17,7 @@ class _MainNavigationState extends State<MainNavigation> {
   int _selectedIndex = 0;
   int _previousIndex = 0;
 
+  // List of pages to navigate between
   final List<Widget> _pages = const [
     HomeScreen(),
     StatsScreen(),
@@ -31,26 +32,58 @@ class _MainNavigationState extends State<MainNavigation> {
     });
   }
 
-  // ✅ Keep this transition builder for page switching
-  Widget _buildTransition(Widget child, Animation<double> animation) {
-    bool slideFromRight = _selectedIndex > _previousIndex;
+  // Create a route for the add transaction screen with container transform
+  Route _createAddTransactionRoute() {
+    return PageRouteBuilder(
+      pageBuilder: (context, animation, secondaryAnimation) => const NewExpenseScreen(),
+      transitionsBuilder: (context, animation, secondaryAnimation, child) {
+        const beginOffset = Offset(0.0, 1.0);
+        const endOffset = Offset.zero;
+        const curve = Curves.easeInOut;
 
-    const curve = Curves.easeInOut;
-    final begin = slideFromRight ? const Offset(1.0, 0.0) : const Offset(-1.0, 0.0);
-    final end = Offset.zero;
+        var offsetAnimation = Tween(begin: beginOffset, end: endOffset)
+            .chain(CurveTween(curve: curve))
+            .animate(animation);
 
-    final tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
-    final offsetAnimation = animation.drive(tween);
+        // Also add a fade effect
+        var fadeAnimation = Tween(begin: 0.0, end: 1.0)
+            .animate(CurvedAnimation(
+          parent: animation,
+          curve: const Interval(0.0, 0.5, curve: Curves.easeIn),
+        ));
 
-    return SlideTransition(position: offsetAnimation, child: child);
+        return FadeTransition(
+          opacity: fadeAnimation,
+          child: SlideTransition(
+            position: offsetAnimation,
+            child: child,
+          ),
+        );
+      },
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      // Use AnimatedSwitcher with custom transition
       body: AnimatedSwitcher(
         duration: const Duration(milliseconds: 300),
-        transitionBuilder: _buildTransition,
+        transitionBuilder: (child, animation) {
+          // Determine slide direction based on index change
+          bool slideFromRight = _selectedIndex > _previousIndex;
+
+          return SlideTransition(
+            position: Tween<Offset>(
+              begin: Offset(slideFromRight ? 1.0 : -1.0, 0.0),
+              end: Offset.zero,
+            ).animate(CurvedAnimation(
+              parent: animation,
+              curve: Curves.easeInOut,
+            )),
+            child: child,
+          );
+        },
         child: KeyedSubtree(
           key: ValueKey<int>(_selectedIndex),
           child: _pages[_selectedIndex],
@@ -82,44 +115,21 @@ class _MainNavigationState extends State<MainNavigation> {
           ),
         ],
       ),
-      // Only show FAB when not on the Accounts screen
-      floatingActionButton: _selectedIndex != 2 ? _buildFAB() : null,
-      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
-    );
-  }
-
-  // New method to build the FAB with container transform
-  Widget _buildFAB() {
-    return OpenContainer(
-      transitionType: ContainerTransitionType.fade, // Use fade type from the animations package
-      transitionDuration: const Duration(milliseconds: 500),
-      closedElevation: 6.0,
-      closedShape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.all(Radius.circular(28.0)),
+      floatingActionButton: FloatingActionButton(
+        backgroundColor: Colors.deepPurple,
+        child: const Icon(Icons.add, color: Colors.white),
+        onPressed: () async {
+          // Use await to properly handle the return value
+          final result = await Navigator.of(context).push(_createAddTransactionRoute());
+          // Check if we need to refresh
+          if (result == true) {
+            setState(() {
+              // Refresh if needed
+            });
+          }
+        },
       ),
-      closedColor: Colors.deepPurple,
-      closedBuilder: (context, openContainer) {
-        return SizedBox(
-          height: 56.0,
-          width: 56.0,
-          child: Center(
-            child: Icon(
-              Icons.add,
-              color: Colors.white,
-            ),
-          ),
-        );
-      },
-      openBuilder: (context, _) {
-        return const NewExpenseScreen();
-      },
-      onClosed: (value) {
-        if (value == true) {
-          setState(() {
-            // Optionally refresh here if needed
-          });
-        }
-      },
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
     );
   }
 }

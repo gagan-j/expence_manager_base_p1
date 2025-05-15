@@ -1,0 +1,2 @@
+C:/Users/yet33/coding_pp/projects_/expence_2/prototype_expenceMAG/android/app/.cxx/RelWithDebInfo/47196t3w/x86/CMakeFiles/edit_cache.dir
+C:/Users/yet33/coding_pp/projects_/expence_2/prototype_expenceMAG/android/app/.cxx/RelWithDebInfo/47196t3w/x86/CMakeFiles/rebuild_cache.dir
