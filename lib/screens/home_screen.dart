@@ -134,7 +134,7 @@ class _HomeScreenState extends State<HomeScreen> {
       backgroundColor: Colors.black,
       appBar: AppBar(
         title: const Text(
-          'Finance Tracker',
+          'keeping eye on money app',
           style: TextStyle(
             fontWeight: FontWeight.bold,
             fontSize: 24,
@@ -317,7 +317,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           borderRadius: BorderRadius.circular(20),
                         ),
                       ),
-                      child: const Text('Add Transaction'),
+                      child: const Text('Add Transaction',style: TextStyle(color: Colors.white),),
                     ),
                   ],
                 ),

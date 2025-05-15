@@ -4,7 +4,6 @@ import './stats_screen.dart';
 import './accounts_screen.dart';
 import './settings_screen.dart';
 import './new_expense_screen.dart';
-import 'package:animations/animations.dart';
 
 class MainNavigation extends StatefulWidget {
   const MainNavigation({Key? key}) : super(key: key);
@@ -15,33 +14,77 @@ class MainNavigation extends StatefulWidget {
 
 class _MainNavigationState extends State<MainNavigation> {
   int _selectedIndex = 0;
+  int _previousIndex = 0;
 
-  // Define a method to get the current screen
-  Widget _getScreen(int index) {
-    switch (index) {
-      case 0:
-        return const HomeScreen();
-      case 1:
-        return const StatsScreen();
-      case 2:
-        return const AccountsScreen();
-      case 3:
-        return const SettingsScreen();
-      default:
-        return const HomeScreen();
-    }
-  }
+  final List<Widget> _pages = const [
+    HomeScreen(),
+    StatsScreen(),
+    AccountsScreen(),
+    SettingsScreen(),
+  ];
 
   void _onItemTapped(int index) {
     setState(() {
+      _previousIndex = _selectedIndex;
       _selectedIndex = index;
     });
+  }
+
+  // ✅ Fixed: this now matches AnimatedSwitcherTransitionBuilder type
+  Widget _buildTransition(Widget child, Animation<double> animation) {
+    bool slideFromRight = _selectedIndex > _previousIndex;
+
+    const curve = Curves.easeInOut;
+    final begin = slideFromRight ? const Offset(1.0, 0.0) : const Offset(-1.0, 0.0);
+    final end = Offset.zero;
+
+    final tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+    final offsetAnimation = animation.drive(tween);
+
+    return SlideTransition(position: offsetAnimation, child: child);
+  }
+
+  Route _createAddTransactionRoute() {
+    return PageRouteBuilder(
+      pageBuilder: (context, animation, secondaryAnimation) => const NewExpenseScreen(),
+      transitionsBuilder: (context, animation, secondaryAnimation, child) {
+        const beginOffset = Offset(0.0, 1.0);
+        const endOffset = Offset.zero;
+        const curve = Curves.easeInOut;
+
+        final offsetAnimation = Tween(begin: beginOffset, end: endOffset)
+            .chain(CurveTween(curve: curve))
+            .animate(animation);
+
+        final fadeAnimation = Tween(begin: 0.0, end: 1.0).animate(
+          CurvedAnimation(
+            parent: animation,
+            curve: const Interval(0.0, 0.5, curve: Curves.easeIn),
+          ),
+        );
+
+        return FadeTransition(
+          opacity: fadeAnimation,
+          child: SlideTransition(
+            position: offsetAnimation,
+            child: child,
+          ),
+        );
+      },
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: _getScreen(_selectedIndex),
+      body: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 300),
+        transitionBuilder: _buildTransition,
+        child: KeyedSubtree(
+          key: ValueKey<int>(_selectedIndex),
+          child: _pages[_selectedIndex],
+        ),
+      ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
         onTap: _onItemTapped,
@@ -68,34 +111,17 @@ class _MainNavigationState extends State<MainNavigation> {
           ),
         ],
       ),
-      floatingActionButton: OpenContainer(
-        transitionType: ContainerTransitionType.fade,
-        openBuilder: (BuildContext context, VoidCallback _) {
-          return const NewExpenseScreen();
-        },
-        closedElevation: 6.0,
-        closedShape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.all(Radius.circular(56 / 2)),
-        ),
-        closedColor: Colors.deepPurple,
-        closedBuilder: (BuildContext context, VoidCallback openContainer) {
-          return SizedBox(
-            height: 56,
-            width: 56,
-            child: Center(
-              child: Icon(
-                Icons.add,
-                color: Theme.of(context).colorScheme.onPrimary,
-              ),
-            ),
-          );
-        },
-        onClosed: (data) {
-          if (data == true) {
-            setState(() {
-              // Refresh if needed
-            });
-          }
+      floatingActionButton: FloatingActionButton(
+        backgroundColor: Colors.deepPurple,
+        child: const Icon(Icons.add, color: Colors.white),
+        onPressed: () {
+          Navigator.of(context).push(_createAddTransactionRoute()).then((value) {
+            if (value == true) {
+              setState(() {
+                // Optionally refresh here
+              });
+            }
+          });
         },
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,

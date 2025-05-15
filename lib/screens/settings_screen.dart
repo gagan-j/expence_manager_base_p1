@@ -195,47 +195,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ),
 
-          // Theme Settings
-          Container(
-            margin: const EdgeInsets.only(bottom: 16),
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.grey[900],
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Appearance',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'Dark Mode',
-                      style: TextStyle(
-                        color: Colors.white,
-                      ),
-                    ),
-                    Switch(
-                      value: true, // Always on for now
-                      onChanged: null, // Disabled
-                      activeColor: Colors.deepPurple,
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-
-          // App Info
           Container(
             margin: const EdgeInsets.only(bottom: 16),
             padding: const EdgeInsets.all(16),
@@ -265,7 +224,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                     ),
                     Text(
-                      '1.0.0',
+                      '1.6.9',
                       style: TextStyle(
                         color: Colors.grey,
                       ),
@@ -314,36 +273,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                TextButton(
-                  onPressed: () {
-                    // Show backup & restore options
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Backup & Restore feature coming soon')),
-                    );
-                  },
-                  style: TextButton.styleFrom(
-                    foregroundColor: Colors.white,
-                    padding: EdgeInsets.zero,
-                    alignment: Alignment.centerLeft,
-                  ),
-                  child: const Text('Backup & Restore Data'),
-                ),
-                const SizedBox(height: 8),
-                TextButton(
-                  onPressed: () {
-                    // Privacy policy
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Privacy Policy will open in browser')),
-                    );
-                  },
-                  style: TextButton.styleFrom(
-                    foregroundColor: Colors.white,
-                    padding: EdgeInsets.zero,
-                    alignment: Alignment.centerLeft,
-                  ),
-                  child: const Text('Privacy Policy'),
-                ),
-                const SizedBox(height: 8),
                 TextButton(
                   onPressed: () {
                     // Sign out
