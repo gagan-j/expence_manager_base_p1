@@ -387,7 +387,7 @@ class _StatsScreenState extends State<StatsScreen> {
   Widget _buildChart() {
     switch (_selectedChart) {
       case 'Daily':
-        return _buildSimpleBarChart();
+        return _buildLineChart();
       case 'Expenses':
         return _buildSimplePieChart(_generateCategoryData(), Colors.red);
       case 'Income':
@@ -397,7 +397,8 @@ class _StatsScreenState extends State<StatsScreen> {
     }
   }
 
-  Widget _buildSimpleBarChart() {
+  // New method to build a scrollable line chart
+  Widget _buildLineChart() {
     final data = _generateDailyData();
     if (data.isEmpty) {
       return const Center(
@@ -414,103 +415,104 @@ class _StatsScreenState extends State<StatsScreen> {
       maxValue = math.max(maxValue, math.max(item.income, item.expense));
     }
 
+    // Add a little padding to the max value to prevent lines from touching the top
+    maxValue = maxValue * 1.1;
+
     return Column(
       children: [
-        Container(
-          height: 220,
-          padding: const EdgeInsets.only(top: 20),
-          child: Row(
-            children: [
-              // Y-axis labels
-              Column(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                crossAxisAlignment: CrossAxisAlignment.end,
+        SizedBox(
+          height: 250,
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Container(
+              padding: const EdgeInsets.only(top: 20, right: 20),
+              // Make the chart wider based on data points
+              width: math.max(MediaQuery.of(context).size.width - 32, data.length * 60.0),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('₹${NumberFormat('#,##0').format(maxValue)}',
-                      style: TextStyle(color: Colors.grey[400], fontSize: 10)),
-                  Text('₹${NumberFormat('#,##0').format(maxValue * 0.75)}',
-                      style: TextStyle(color: Colors.grey[400], fontSize: 10)),
-                  Text('₹${NumberFormat('#,##0').format(maxValue * 0.5)}',
-                      style: TextStyle(color: Colors.grey[400], fontSize: 10)),
-                  Text('₹${NumberFormat('#,##0').format(maxValue * 0.25)}',
-                      style: TextStyle(color: Colors.grey[400], fontSize: 10)),
-                  Text('₹0', style: TextStyle(color: Colors.grey[400], fontSize: 10)),
-                ],
-              ),
-              const SizedBox(width: 8),
-              // Chart area
-              Expanded(
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    final barWidth = constraints.maxWidth / (data.length * 2 + 1);
+                  // Y-axis labels
+                  Column(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text('₹${NumberFormat('#,##0').format(maxValue)}',
+                          style: TextStyle(color: Colors.grey[400], fontSize: 10)),
+                      const Spacer(),
+                      Text('₹${NumberFormat('#,##0').format(maxValue * 0.75)}',
+                          style: TextStyle(color: Colors.grey[400], fontSize: 10)),
+                      const Spacer(),
+                      Text('₹${NumberFormat('#,##0').format(maxValue * 0.5)}',
+                          style: TextStyle(color: Colors.grey[400], fontSize: 10)),
+                      const Spacer(),
+                      Text('₹${NumberFormat('#,##0').format(maxValue * 0.25)}',
+                          style: TextStyle(color: Colors.grey[400], fontSize: 10)),
+                      const Spacer(),
+                      Text('₹0', style: TextStyle(color: Colors.grey[400], fontSize: 10)),
+                      const SizedBox(height: 20), // Space for x-axis labels
+                    ],
+                  ),
+                  const SizedBox(width: 10),
+                  // Line chart area
+                  Expanded(
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        return Stack(
+                          children: [
+                            // Background grid lines
+                            _buildGridLines(constraints, maxValue),
 
-                    return Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: List.generate(
-                        data.length,
-                            (index) {
-                          final item = data[index];
-                          final incomeHeight = maxValue > 0
-                              ? (item.income / maxValue) * 180
-                              : 0.0;
-                          final expenseHeight = maxValue > 0
-                              ? (item.expense / maxValue) * 180
-                              : 0.0;
-
-                          return Column(
-                            mainAxisAlignment: MainAxisAlignment.end,
-                            children: [
-                              // Bar container
-                              Row(
-                                children: [
-                                  // Income bar
-                                  Container(
-                                    width: barWidth,
-                                    height: incomeHeight,
-                                    decoration: BoxDecoration(
-                                      color: Colors.green.withOpacity(0.8),
-                                      borderRadius: const BorderRadius.only(
-                                        topLeft: Radius.circular(4),
-                                        topRight: Radius.circular(4),
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 2),
-                                  // Expense bar
-                                  Container(
-                                    width: barWidth,
-                                    height: expenseHeight,
-                                    decoration: BoxDecoration(
-                                      color: Colors.red.withOpacity(0.8),
-                                      borderRadius: const BorderRadius.only(
-                                        topLeft: Radius.circular(4),
-                                        topRight: Radius.circular(4),
-                                      ),
-                                    ),
-                                  ),
-                                ],
+                            // Draw income line
+                            CustomPaint(
+                              size: Size(constraints.maxWidth, constraints.maxHeight - 20), // Subtract space for x-axis labels
+                              painter: LineChartPainter(
+                                data: data,
+                                maxValue: maxValue,
+                                color: Colors.green,
+                                dataType: 'income',
                               ),
-                              const SizedBox(height: 4),
-                              // X-axis label
-                              SizedBox(
-                                width: barWidth * 2 + 2,
-                                child: Text(
-                                  item.date,
-                                  style: TextStyle(color: Colors.grey[400], fontSize: 9),
-                                  textAlign: TextAlign.center,
-                                  overflow: TextOverflow.ellipsis,
+                            ),
+
+                            // Draw expense line
+                            CustomPaint(
+                              size: Size(constraints.maxWidth, constraints.maxHeight - 20), // Subtract space for x-axis labels
+                              painter: LineChartPainter(
+                                data: data,
+                                maxValue: maxValue,
+                                color: Colors.red,
+                                dataType: 'expense',
+                              ),
+                            ),
+
+                            // X-axis labels
+                            Positioned(
+                              bottom: 0,
+                              left: 0,
+                              right: 0,
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: List.generate(
+                                  data.length,
+                                      (index) => SizedBox(
+                                    width: constraints.maxWidth / data.length,
+                                    child: Text(
+                                      data[index].date,
+                                      style: TextStyle(color: Colors.grey[400], fontSize: 9),
+                                      textAlign: TextAlign.center,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
                                 ),
                               ),
-                            ],
-                          );
-                        },
-                      ),
-                    );
-                  },
-                ),
+                            ),
+                          ],
+                        );
+                      },
+                    ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
         ),
         const SizedBox(height: 16),
@@ -522,9 +524,9 @@ class _StatsScreenState extends State<StatsScreen> {
               children: [
                 Container(
                   width: 12,
-                  height: 12,
+                  height: 3,
                   decoration: BoxDecoration(
-                    color: Colors.green.withOpacity(0.8),
+                    color: Colors.green,
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
@@ -537,9 +539,9 @@ class _StatsScreenState extends State<StatsScreen> {
               children: [
                 Container(
                   width: 12,
-                  height: 12,
+                  height: 3,
                   decoration: BoxDecoration(
-                    color: Colors.red.withOpacity(0.8),
+                    color: Colors.red,
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
@@ -550,6 +552,14 @@ class _StatsScreenState extends State<StatsScreen> {
           ],
         ),
       ],
+    );
+  }
+
+  // Helper method to build grid lines for the chart
+  Widget _buildGridLines(BoxConstraints constraints, double maxValue) {
+    return CustomPaint(
+      size: Size(constraints.maxWidth, constraints.maxHeight - 20),
+      painter: GridLinePainter(maxValue: maxValue),
     );
   }
 
@@ -686,7 +696,83 @@ class _StatsScreenState extends State<StatsScreen> {
   }
 }
 
-// Custom painter for pie chart
+// Custom painter for grid lines
+class GridLinePainter extends CustomPainter {
+  final double maxValue;
+
+  GridLinePainter({required this.maxValue});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.grey[800]!
+      ..strokeWidth = 0.5
+      ..style = PaintingStyle.stroke;
+
+    // Draw horizontal grid lines
+    for (int i = 0; i <= 4; i++) {
+      final y = size.height - (size.height * (i / 4));
+      canvas.drawLine(Offset(0, y), Offset(size.width, y), paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+// Custom painter for line chart
+class LineChartPainter extends CustomPainter {
+  final List<BarData> data;
+  final double maxValue;
+  final Color color;
+  final String dataType; // 'income' or 'expense'
+
+  LineChartPainter({
+    required this.data,
+    required this.maxValue,
+    required this.color,
+    required this.dataType,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final linePaint = Paint()
+      ..color = color
+      ..strokeWidth = 2.5
+      ..style = PaintingStyle.stroke;
+
+    final dotPaint = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill;
+
+    final path = Path();
+    final pointWidth = size.width / data.length;
+
+    // Draw the line
+    bool isFirstPoint = true;
+    for (int i = 0; i < data.length; i++) {
+      final value = dataType == 'income' ? data[i].income : data[i].expense;
+      final x = i * pointWidth + (pointWidth / 2);
+      final y = size.height - (size.height * (value / maxValue));
+
+      if (isFirstPoint) {
+        path.moveTo(x, y);
+        isFirstPoint = false;
+      } else {
+        path.lineTo(x, y);
+      }
+
+      // Draw point at each data point
+      canvas.drawCircle(Offset(x, y), 4, dotPaint);
+    }
+
+    canvas.drawPath(path, linePaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
+}
+
 // Custom painter for pie chart
 class PieChartPainter extends CustomPainter {
   final List<ChartData> data;

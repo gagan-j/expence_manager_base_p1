@@ -24,17 +24,21 @@ class TransactionService {
 
   static Database? _database;
   List<ExpenseTransaction> allTransactions = [];
+  List<Account> allAccounts = [];
 
   // Add streams for real-time updates
   final _transactionsStreamController = StreamController<List<ExpenseTransaction>>.broadcast();
   final _summaryStreamController = StreamController<FinancialSummary>.broadcast();
+  final _accountsStreamController = StreamController<List<Account>>.broadcast();
 
   Stream<List<ExpenseTransaction>> get transactionsStream => _transactionsStreamController.stream;
   Stream<FinancialSummary> get summaryStream => _summaryStreamController.stream;
+  Stream<List<Account>> get accountsStream => _accountsStreamController.stream;
 
   Future<void> initialize() async {
     await database;
     // Initial fetch to populate streams
+    await fetchAccounts();
     await fetchTransactions();
     _updateSummary();
   }
@@ -100,10 +104,16 @@ class TransactionService {
     _transactionsStreamController.add(allTransactions);
   }
 
-  void _updateSummary() {
+  void _updateAccountsStream() {
+    _accountsStreamController.add(allAccounts);
+  }
+
+  void _updateSummary() async {
     double totalIncome = 0.0;
     double totalExpense = 0.0;
+    double availableBalance = 0.0;
 
+    // Calculate income and expense totals from transactions
     for (var tx in allTransactions) {
       if (tx.type == 'income') {
         totalIncome += tx.amount;
@@ -112,10 +122,14 @@ class TransactionService {
       }
     }
 
+    // Get the sum of all account balances for available balance
+    final accounts = await fetchAccounts();
+    availableBalance = accounts.fold(0.0, (sum, account) => sum + account.balance);
+
     final summary = FinancialSummary(
       totalIncome: totalIncome,
       totalExpense: totalExpense,
-      balance: totalIncome - totalExpense,
+      balance: availableBalance,
     );
 
     _summaryStreamController.add(summary);
@@ -294,7 +308,8 @@ class TransactionService {
     final db = await database;
     final id = await db.insert('accounts', account.toMap());
 
-    // Refresh transactions to update account info
+    // Refresh accounts and transactions to update account info
+    await fetchAccounts();
     await fetchTransactions();
 
     return id;
@@ -309,7 +324,8 @@ class TransactionService {
       whereArgs: [account.id],
     );
 
-    // Refresh transactions to update account info
+    // Refresh accounts and transactions to update account info
+    await fetchAccounts();
     await fetchTransactions();
   }
 
@@ -321,7 +337,8 @@ class TransactionService {
       whereArgs: [id],
     );
 
-    // Refresh transactions to update account info
+    // Refresh accounts and transactions to update account info
+    await fetchAccounts();
     await fetchTransactions();
   }
 
@@ -329,9 +346,14 @@ class TransactionService {
     final db = await database;
     final List<Map<String, dynamic>> maps = await db.query('accounts');
 
-    return List.generate(maps.length, (i) {
+    allAccounts = List.generate(maps.length, (i) {
       return Account.fromMap(maps[i]);
     });
+
+    // Update accounts stream
+    _updateAccountsStream();
+
+    return allAccounts;
   }
 
   Future<Account?> getAccountById(int id) async {
@@ -365,5 +387,6 @@ class TransactionService {
   void dispose() {
     _transactionsStreamController.close();
     _summaryStreamController.close();
+    _accountsStreamController.close();
   }
 }

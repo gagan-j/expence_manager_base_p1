@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
-import './home_screen.dart';
-import './stats_screen.dart';
-import './accounts_screen.dart';
-import './settings_screen.dart';
-import './new_expense_screen.dart';
+import '../screens/home_screen.dart';
+import '../screens/stats_screen.dart';
+import '../screens/accounts_screen.dart';
+import '../screens/settings_screen.dart';
+import '../screens/new_expense_screen.dart';
 
 class MainNavigation extends StatefulWidget {
   const MainNavigation({Key? key}) : super(key: key);
 
   @override
-  State<MainNavigation> createState() => _MainNavigationState();
+  _MainNavigationState createState() => _MainNavigationState();
 }
 
 class _MainNavigationState extends State<MainNavigation> {
@@ -111,7 +111,8 @@ class _MainNavigationState extends State<MainNavigation> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
+      // Only show FAB when not on the Accounts screen
+      floatingActionButton: _selectedIndex != 2 ? FloatingActionButton(
         backgroundColor: Colors.deepPurple,
         child: const Icon(Icons.add, color: Colors.white),
         onPressed: () {
@@ -123,7 +124,7 @@ class _MainNavigationState extends State<MainNavigation> {
             }
           });
         },
-      ),
+      ) : null,
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
     );
   }
