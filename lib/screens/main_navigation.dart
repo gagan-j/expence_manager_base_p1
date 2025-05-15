@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import '../screens/home_screen.dart';
-import '../screens/stats_screen.dart';
-import '../screens/accounts_screen.dart';
-import '../screens/settings_screen.dart';
-import '../screens/new_expense_screen.dart';
+import 'home_screen.dart';
+import 'stats_screen.dart';
+import 'accounts_screen.dart';
+import 'settings_screen.dart';
+import 'new_expense_screen.dart';
 
 class MainNavigation extends StatefulWidget {
   const MainNavigation({Key? key}) : super(key: key);
@@ -44,34 +44,49 @@ class _MainNavigationState extends State<MainNavigation> {
     return SlideTransition(position: offsetAnimation, child: child);
   }
 
-  Route _createAddTransactionRoute() {
-    return PageRouteBuilder(
-      pageBuilder: (context, animation, secondaryAnimation) => const NewExpenseScreen(),
-      transitionsBuilder: (context, animation, secondaryAnimation, child) {
-        const beginOffset = Offset(0.0, 1.0);
-        const endOffset = Offset.zero;
-        const curve = Curves.easeInOut;
-
-        final offsetAnimation = Tween(begin: beginOffset, end: endOffset)
-            .chain(CurveTween(curve: curve))
-            .animate(animation);
-
-        final fadeAnimation = Tween(begin: 0.0, end: 1.0).animate(
-          CurvedAnimation(
+  // Modified to use Container Transform animation
+  void _navigateToAddTransaction(BuildContext context) {
+    Navigator.of(context).push(
+      PageRouteBuilder(
+        pageBuilder: (context, animation, secondaryAnimation) {
+          return const NewExpenseScreen();
+        },
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          // Use simpler animation to avoid the BorderRadius error
+          final curvedAnimation = CurvedAnimation(
             parent: animation,
-            curve: const Interval(0.0, 0.5, curve: Curves.easeIn),
-          ),
-        );
+            curve: Curves.easeInOut,
+          );
 
-        return FadeTransition(
-          opacity: fadeAnimation,
-          child: SlideTransition(
-            position: offsetAnimation,
-            child: child,
-          ),
-        );
-      },
-    );
+          // Scale animation
+          final scaleAnimation = Tween<double>(
+            begin: 0.0,
+            end: 1.0,
+          ).animate(curvedAnimation);
+
+          // Fade animation
+          final fadeAnimation = Tween<double>(
+            begin: 0.0,
+            end: 1.0,
+          ).animate(curvedAnimation);
+
+          return ScaleTransition(
+            scale: scaleAnimation,
+            child: FadeTransition(
+              opacity: fadeAnimation,
+              child: child,
+            ),
+          );
+        },
+        transitionDuration: const Duration(milliseconds: 300),
+      ),
+    ).then((value) {
+      if (value == true) {
+        setState(() {
+          // Optionally refresh here
+        });
+      }
+    });
   }
 
   @override
@@ -111,19 +126,12 @@ class _MainNavigationState extends State<MainNavigation> {
           ),
         ],
       ),
-      // Only show FAB when not on the Accounts screen
+
+
       floatingActionButton: _selectedIndex != 2 ? FloatingActionButton(
         backgroundColor: Colors.deepPurple,
         child: const Icon(Icons.add, color: Colors.white),
-        onPressed: () {
-          Navigator.of(context).push(_createAddTransactionRoute()).then((value) {
-            if (value == true) {
-              setState(() {
-                // Optionally refresh here
-              });
-            }
-          });
-        },
+        onPressed: () => _navigateToAddTransaction(context),
       ) : null,
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
     );
