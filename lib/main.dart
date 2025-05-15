@@ -4,9 +4,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'screens/login_screen.dart';
 import 'screens/main_navigation.dart';
 import 'services/transaction_service.dart';
-import 'package:flutter/material.dart';
-import 'package:firebase_core/firebase_core.dart';
-import 'services/transaction_service.dart';
 
 
 void main() async {
@@ -15,6 +12,9 @@ void main() async {
 
   // Initialize the transaction service
   await TransactionService().initialize();
+
+  // Comment out the notification service
+  // await NotificationService().init();
 
   runApp(const MyApp());
 }
@@ -51,3 +51,4 @@ class MyApp extends StatelessWidget {
     );
   }
 }
+

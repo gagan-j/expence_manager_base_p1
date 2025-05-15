@@ -1,76 +1,51 @@
-// Note: Renamed from Transaction to ExpenseTransaction to avoid naming conflicts
 class ExpenseTransaction {
-  final int? id;
-  final String name;
-  final double amount;
-  final String category;
-  final String? subCategory;
-  final DateTime date;
-  final String type; // 'income' or 'expense'
-  final String? description;
-  final String account;
+  int? id;
+  String title;
+  double amount;
+  DateTime date;
+  String category;
+  String subcategory;
+  String type; // 'income' or 'expense'
+  int? accountId; // Add this field
+  String? notes;
 
   ExpenseTransaction({
     this.id,
-    required this.name,
+    required this.title,
     required this.amount,
-    required this.category,
-    this.subCategory,
     required this.date,
+    required this.category,
+    required this.subcategory,
     required this.type,
-    this.description,
-    required this.account,
+    this.accountId, // Add this field
+    this.notes,
   });
 
   Map<String, dynamic> toMap() {
     return {
-      if (id != null) 'id': id,
-      'name': name,
+      'id': id,
+      'title': title,
       'amount': amount,
-      'category': category,
-      'subCategory': subCategory,
       'date': date.toIso8601String(),
+      'category': category,
+      'subcategory': subcategory,
       'type': type,
-      'description': description,
-      'account': account,
+      'accountId': accountId, // Add this field
+      'notes': notes,
     };
   }
 
-  static ExpenseTransaction fromMap(Map<String, dynamic> map) {
+  factory ExpenseTransaction.fromMap(Map<String, dynamic> map) {
     return ExpenseTransaction(
       id: map['id'],
-      name: map['name'],
+      title: map['title'],
       amount: map['amount'],
-      category: map['category'],
-      subCategory: map['subCategory'],
       date: DateTime.parse(map['date']),
+      category: map['category'],
+      subcategory: map['subcategory'],
       type: map['type'],
-      description: map['description'],
-      account: map['account'],
-    );
-  }
-
-  ExpenseTransaction copyWith({
-    int? id,
-    String? name,
-    double? amount,
-    String? category,
-    String? subCategory,
-    DateTime? date,
-    String? type,
-    String? description,
-    String? account,
-  }) {
-    return ExpenseTransaction(
-      id: id ?? this.id,
-      name: name ?? this.name,
-      amount: amount ?? this.amount,
-      category: category ?? this.category,
-      subCategory: subCategory ?? this.subCategory,
-      date: date ?? this.date,
-      type: type ?? this.type,
-      description: description ?? this.description,
-      account: account ?? this.account,
+      accountId: map['accountId'], // Add this field
+      notes: map['notes'],
     );
   }
 }

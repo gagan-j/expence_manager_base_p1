@@ -1,45 +1,35 @@
 class Account {
-  final int? id;
-  final String name;
-  final double balance;
-  final String? description;
+  int? id;
+  String name;
+  double balance;
+  String type; // cash, bank, credit card, etc.
+  String? iconName;
 
   Account({
     this.id,
     required this.name,
     required this.balance,
-    this.description,
+    required this.type,
+    this.iconName,
   });
 
   Map<String, dynamic> toMap() {
     return {
-      if (id != null) 'id': id,
+      'id': id,
       'name': name,
       'balance': balance,
-      'description': description,
+      'type': type,
+      'iconName': iconName,
     };
   }
 
-  static Account fromMap(Map<String, dynamic> map) {
+  factory Account.fromMap(Map<String, dynamic> map) {
     return Account(
       id: map['id'],
       name: map['name'],
       balance: map['balance'],
-      description: map['description'],
-    );
-  }
-
-  Account copyWith({
-    int? id,
-    String? name,
-    double? balance,
-    String? description,
-  }) {
-    return Account(
-      id: id ?? this.id,
-      name: name ?? this.name,
-      balance: balance ?? this.balance,
-      description: description ?? this.description,
+      type: map['type'],
+      iconName: map['iconName'],
     );
   }
 }
