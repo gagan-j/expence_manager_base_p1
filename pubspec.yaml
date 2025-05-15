@@ -1,6 +1,6 @@
 name: testing_exp_1
 description: "A new Flutter project."
-publish_to: 'none' # Remove this line if you wish to publish to pub.dev
+publish_to: 'none'
 
 version: 1.0.0+1
 
@@ -17,14 +17,10 @@ dependencies:
   firebase_core: ^2.15.1
   firebase_auth: ^4.9.0
   google_sign_in: ^6.1.5
-  # Use community maintained fork
   community_charts_flutter: ^1.0.0
   timezone: ^0.9.2
   shared_preferences: ^2.2.0
-  flutter_local_notifications: ^14.1.2
-
-
-  # Your existing dependencies
+  flutter_local_notifications: ^15.1.0
   syncfusion_flutter_charts: ^29.1.35
   cupertino_icons: ^1.0.8
 
@@ -36,6 +32,3 @@ dev_dependencies:
 flutter:
   uses-material-design: true
 
-  # Uncomment and list your assets here if you add any
-  # assets:
-  #   - images/
