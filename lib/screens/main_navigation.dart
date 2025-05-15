@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-// Make sure these imports match your actual file locations
 import './home_screen.dart';
 import './stats_screen.dart';
 import './accounts_screen.dart';
 import './settings_screen.dart';
 import './new_expense_screen.dart';
+import 'package:animations/animations.dart';
 
 class MainNavigation extends StatefulWidget {
   const MainNavigation({Key? key}) : super(key: key);
@@ -68,23 +68,37 @@ class _MainNavigationState extends State<MainNavigation> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const NewExpenseScreen()),
-          ).then((value) {
-            if (value == true) {
-              setState(() {
-                // Refresh if needed
-              });
-            }
-          });
+      floatingActionButton: OpenContainer(
+        transitionType: ContainerTransitionType.fade,
+        openBuilder: (BuildContext context, VoidCallback _) {
+          return const NewExpenseScreen();
         },
-        backgroundColor: Colors.deepPurple,
-        child: const Icon(Icons.add),
+        closedElevation: 6.0,
+        closedShape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.all(Radius.circular(56 / 2)),
+        ),
+        closedColor: Colors.deepPurple,
+        closedBuilder: (BuildContext context, VoidCallback openContainer) {
+          return SizedBox(
+            height: 56,
+            width: 56,
+            child: Center(
+              child: Icon(
+                Icons.add,
+                color: Theme.of(context).colorScheme.onPrimary,
+              ),
+            ),
+          );
+        },
+        onClosed: (data) {
+          if (data == true) {
+            setState(() {
+              // Refresh if needed
+            });
+          }
+        },
       ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
     );
   }
 }

@@ -230,7 +230,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   const SizedBox(width: 8),
                   PopupMenuButton<String>(
-                    icon: const Icon(Icons.filter_list, color: Colors.grey),
+                    //icon: const Icon(Icons.filter_list, color: Colors.grey), its giving me error during emulation idk check once
                     onSelected: (value) {
                       setState(() {
                         _selectedType = value;
