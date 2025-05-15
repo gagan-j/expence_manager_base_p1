@@ -31,7 +31,7 @@ class _MainNavigationState extends State<MainNavigation> {
     });
   }
 
-  // ✅ Fixed: this now matches AnimatedSwitcherTransitionBuilder type
+  // ✅ Keep this transition builder for page switching
   Widget _buildTransition(Widget child, Animation<double> animation) {
     bool slideFromRight = _selectedIndex > _previousIndex;
 
@@ -91,7 +91,7 @@ class _MainNavigationState extends State<MainNavigation> {
   // New method to build the FAB with container transform
   Widget _buildFAB() {
     return OpenContainer(
-      transitionType: ContainerTransitionType.fade, // You can also use 'fadeThrough'
+      transitionType: ContainerTransitionType.fade, // Use fade type from the animations package
       transitionDuration: const Duration(milliseconds: 500),
       closedElevation: 6.0,
       closedShape: const RoundedRectangleBorder(
