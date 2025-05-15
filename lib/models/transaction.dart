@@ -7,6 +7,7 @@ class Transaction {
   final DateTime date;
   final String? description;
   final String account;
+  final String type; // New field: 'expense' or 'income'
 
   Transaction({
     this.id, // 'id' is optional
@@ -17,6 +18,7 @@ class Transaction {
     required this.date,
     this.description,
     required this.account,
+    this.type = 'expense', // Default to expense
   });
 
   // Convert Transaction to Map for inserting into the database
@@ -30,6 +32,7 @@ class Transaction {
       'date': date.toIso8601String(),
       'description': description,
       'account': account,
+      'type': type, // Include the type
     };
   }
 
@@ -44,6 +47,7 @@ class Transaction {
       date: DateTime.parse(map['date'] as String),
       description: map['description'] as String?,
       account: map['account'] as String,
+      type: map['type'] as String? ?? 'expense', // Default to expense if not specified
     );
   }
 }

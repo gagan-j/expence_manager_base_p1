@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/transaction.dart';
+import '../db/db_helper.dart';
 
 class NewExpenseScreen extends StatefulWidget {
   const NewExpenseScreen({super.key});
@@ -7,25 +8,80 @@ class NewExpenseScreen extends StatefulWidget {
   @override
   State<NewExpenseScreen> createState() => _NewExpenseScreenState();
 }
+
 class _NewExpenseScreenState extends State<NewExpenseScreen> {
   DateTime _selectedDateTime = DateTime.now();
   final TextEditingController _amountController = TextEditingController();
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
+  List<String> accountOptions = [];
+  bool _isLoading = true;
+  bool _isIncome = false; // Track if this is an income or expense
 
-  Map<String, List<String>> categoryMap = {
+  // Different category maps for expense and income
+  final Map<String, List<String>> expenseCategoryMap = {
     'Food': ['KFC', 'Snacks', 'Lunch', 'Dinner', 'Breakfast', 'Burger King'],
     'Travel': ['Bus', 'Cab', 'Train'],
     'Phone Recharge': ['Airtel', 'Jio'],
     'Others': [],
   };
 
+  final Map<String, List<String>> incomeCategoryMap = {
+    'Salary': ['Regular', 'Bonus', 'Overtime'],
+    'Investments': ['Dividends', 'Interest', 'Capital Gains'],
+    'Gifts': ['Birthday', 'Anniversary', 'Holiday'],
+    'Others': [],
+  };
+
   String? selectedCategory;
   String? selectedSubcategory;
-
-  List<String> accountOptions = ['Cash', 'Bank Account'];
   String? selectedAccount;
+  bool _isSaving = false;
 
+  // Get the appropriate category map based on transaction type
+  Map<String, List<String>> get categoryMap =>
+      _isIncome ? incomeCategoryMap : expenseCategoryMap;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAccounts();
+  }
+
+  Future<void> _loadAccounts() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final accounts = await DBHelper.instance.fetchAccounts();
+      if (mounted) {
+        setState(() {
+          accountOptions = accounts.map((acc) => acc.name).toList();
+
+          // Make sure we have at least default options if DB is empty
+          if (accountOptions.isEmpty) {
+            accountOptions = ['Cash', 'Bank Account'];
+          }
+
+          if (accountOptions.isNotEmpty && selectedAccount == null) {
+            selectedAccount = accountOptions.first;
+          }
+          _isLoading = false;
+        });
+      }
+      print('Loaded ${accountOptions.length} accounts for dropdown');
+    } catch (e) {
+      print('Error loading accounts: $e');
+      if (mounted) {
+        setState(() {
+          accountOptions = ['Cash', 'Bank Account']; // Fallback
+          selectedAccount = accountOptions.first;
+          _isLoading = false;
+        });
+      }
+    }
+  }
 
   Future<void> _pickDateTime() async {
     final DateTime? pickedDate = await showDatePicker(
@@ -61,7 +117,7 @@ class _NewExpenseScreenState extends State<NewExpenseScreen> {
       builder: (context) {
         final TextEditingController _categoryController = TextEditingController();
         return AlertDialog(
-          title: const Text("Add New Category"),
+          title: Text("Add New ${_isIncome ? 'Income' : 'Expense'} Category"),
           backgroundColor: Colors.black,
           titleTextStyle: const TextStyle(color: Colors.white),
           content: TextField(
@@ -132,16 +188,117 @@ class _NewExpenseScreenState extends State<NewExpenseScreen> {
     );
   }
 
+  // Save transaction method - works for both expense and income
+  void _saveTransaction() {
+    if (_amountController.text.isEmpty ||
+        selectedCategory == null ||
+        selectedAccount == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Please fill all the required fields."),
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      _isSaving = true;
+    });
+
+    // Create the transaction with type
+    final newTransaction = Transaction(
+      category: selectedCategory!,
+      subCategory: selectedSubcategory,
+      name: _nameController.text.isEmpty
+          ? (_isIncome ? "Unnamed Income" : "Unnamed Expense")
+          : _nameController.text,
+      amount: double.tryParse(_amountController.text) ?? 0,
+      date: _selectedDateTime,
+      description: _descriptionController.text,
+      account: selectedAccount!,
+      type: _isIncome ? 'income' : 'expense', // Set the type based on selection
+    );
+
+    try {
+      // First pop the screen, then save in background
+      Navigator.pop(context, true);
+
+      // Now save to DB (after navigation)
+      DBHelper.instance.insertTransaction(newTransaction);
+      print('${_isIncome ? "Income" : "Expense"} transaction saved successfully');
+    } catch (e) {
+      print('Error in save process: $e');
+      // Cannot show snackbar as we've already popped
+    }
+  }
+
+  // Toggle between income and expense modes
+  void _toggleTransactionType(bool isIncome) {
+    setState(() {
+      _isIncome = isIncome;
+      // Reset category and subcategory when switching modes
+      selectedCategory = null;
+      selectedSubcategory = null;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
+    // Color themes based on transaction type
+    final Color themeColor = _isIncome ? Colors.green.shade300 : Colors.red.shade300;
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Add New Expense"),
+        title: Text(_isIncome ? 'Add Income' : 'Add Expense'),
       ),
-      body: SingleChildScrollView(
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
+            // Toggle buttons for Income/Expense
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () => _toggleTransactionType(false),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: !_isIncome ? Colors.red.shade300 : Colors.grey.shade800,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: const RoundedRectangleBorder(
+                        borderRadius: BorderRadius.only(
+                            topLeft: Radius.circular(8),
+                            bottomLeft: Radius.circular(8)
+                        ),
+                      ),
+                    ),
+                    child: const Text('EXPENSE', style: TextStyle(fontWeight: FontWeight.bold)),
+                  ),
+                ),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () => _toggleTransactionType(true),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _isIncome ? Colors.green.shade300 : Colors.grey.shade800,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: const RoundedRectangleBorder(
+                        borderRadius: BorderRadius.only(
+                            topRight: Radius.circular(8),
+                            bottomRight: Radius.circular(8)
+                        ),
+                      ),
+                    ),
+                    child: const Text('INCOME', style: TextStyle(fontWeight: FontWeight.bold)),
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 20),
+
             GestureDetector(
               onTap: _pickDateTime,
               child: Container(
@@ -165,8 +322,14 @@ class _NewExpenseScreenState extends State<NewExpenseScreen> {
               controller: _amountController,
               keyboardType: TextInputType.number,
               style: const TextStyle(color: Colors.white),
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: "Amount (₹)",
+                enabledBorder: UnderlineInputBorder(
+                  borderSide: BorderSide(color: themeColor.withOpacity(0.5)),
+                ),
+                focusedBorder: UnderlineInputBorder(
+                  borderSide: BorderSide(color: themeColor),
+                ),
               ),
             ),
             const SizedBox(height: 16),
@@ -174,8 +337,14 @@ class _NewExpenseScreenState extends State<NewExpenseScreen> {
             TextField(
               controller: _nameController,
               style: const TextStyle(color: Colors.white),
-              decoration: const InputDecoration(
-                labelText: "Expense Name",
+              decoration: InputDecoration(
+                labelText: _isIncome ? "Income Source" : "Expense Name",
+                enabledBorder: UnderlineInputBorder(
+                  borderSide: BorderSide(color: themeColor.withOpacity(0.5)),
+                ),
+                focusedBorder: UnderlineInputBorder(
+                  borderSide: BorderSide(color: themeColor),
+                ),
               ),
             ),
             const SizedBox(height: 16),
@@ -207,7 +376,15 @@ class _NewExpenseScreenState extends State<NewExpenseScreen> {
                         });
                       }
                     },
-                    decoration: const InputDecoration(labelText: "Category"),
+                    decoration: InputDecoration(
+                      labelText: "Category",
+                      enabledBorder: UnderlineInputBorder(
+                        borderSide: BorderSide(color: themeColor.withOpacity(0.5)),
+                      ),
+                      focusedBorder: UnderlineInputBorder(
+                        borderSide: BorderSide(color: themeColor),
+                      ),
+                    ),
                     dropdownColor: Colors.black,
                     style: const TextStyle(color: Colors.white),
                   ),
@@ -215,7 +392,7 @@ class _NewExpenseScreenState extends State<NewExpenseScreen> {
               ],
             ),
             const SizedBox(height: 16),
-            if (selectedCategory != null)
+            if (selectedCategory != null && categoryMap[selectedCategory]!.isNotEmpty)
               Row(
                 children: [
                   Expanded(
@@ -242,7 +419,15 @@ class _NewExpenseScreenState extends State<NewExpenseScreen> {
                           });
                         }
                       },
-                      decoration: const InputDecoration(labelText: "Subcategory"),
+                      decoration: InputDecoration(
+                        labelText: "Subcategory",
+                        enabledBorder: UnderlineInputBorder(
+                          borderSide: BorderSide(color: themeColor.withOpacity(0.5)),
+                        ),
+                        focusedBorder: UnderlineInputBorder(
+                          borderSide: BorderSide(color: themeColor),
+                        ),
+                      ),
                       dropdownColor: Colors.black,
                       style: const TextStyle(color: Colors.white),
                     ),
@@ -263,7 +448,15 @@ class _NewExpenseScreenState extends State<NewExpenseScreen> {
                   selectedAccount = value;
                 });
               },
-              decoration: const InputDecoration(labelText: "Account"),
+              decoration: InputDecoration(
+                labelText: "Account",
+                enabledBorder: UnderlineInputBorder(
+                  borderSide: BorderSide(color: themeColor.withOpacity(0.5)),
+                ),
+                focusedBorder: UnderlineInputBorder(
+                  borderSide: BorderSide(color: themeColor),
+                ),
+              ),
               dropdownColor: Colors.black,
               style: const TextStyle(color: Colors.white),
             ),
@@ -272,46 +465,43 @@ class _NewExpenseScreenState extends State<NewExpenseScreen> {
             TextField(
               controller: _descriptionController,
               style: const TextStyle(color: Colors.white),
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: "Description (Optional)",
+                enabledBorder: UnderlineInputBorder(
+                  borderSide: BorderSide(color: themeColor.withOpacity(0.5)),
+                ),
+                focusedBorder: UnderlineInputBorder(
+                  borderSide: BorderSide(color: themeColor),
+                ),
               ),
               maxLines: 2,
             ),
             const SizedBox(height: 24),
 
             ElevatedButton(
-              onPressed: () {
-                if (_amountController.text.isEmpty ||
-                    selectedCategory == null ||
-                    selectedAccount == null) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text("Please fill all the required fields."),
-                    ),
-                  );
-                  return;
-                }
-
-                final newTransaction = Transaction(
-                  category: selectedCategory!,
-                  subCategory: selectedSubcategory,
-                  name: _nameController.text,
-                  amount: double.tryParse(_amountController.text) ?? 0,
-                  date: _selectedDateTime,
-                  description: _descriptionController.text,
-                  account: selectedAccount!, // ✅ Fixed here
-                );
-                Navigator.pop(context, newTransaction);
-              },
+              onPressed: _isSaving ? null : _saveTransaction,
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.white,
+                backgroundColor: themeColor,
                 foregroundColor: Colors.black,
               ),
-              child: const Text("Save Expense"),
+              child: _isSaving
+                  ? const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(color: Colors.black, strokeWidth: 3),
+              )
+                  : Text("Save ${_isIncome ? 'Income' : 'Expense'}"),
             ),
           ],
         ),
       ),
     );
+  }
+}
+
+// Extension to capitalize strings - add this if needed
+extension StringExtension on String {
+  String capitalize() {
+    return "${this[0].toUpperCase()}${this.substring(1)}";
   }
 }

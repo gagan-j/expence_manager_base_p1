@@ -3,11 +3,10 @@ import 'package:intl/intl.dart';
 import '../models/chart_data.dart';
 import '../models/transaction.dart';
 import '../widgets/pie_chart.dart';
+import '../db/db_helper.dart';
 import 'new_expense_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-import 'package:animations/animations.dart';
-
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -18,38 +17,36 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   bool showWeekly = false;
+  List<Transaction> allTransactions = [];
+  bool _isLoading = false;
 
-  final List<Transaction> allTransactions = [
-    Transaction(
-      category: 'Food',
-      subCategory: 'Groceries',
-      name: 'Big Bazaar',
-      amount: 500,
-      date: DateTime.now(),
-      account: 'Cash',
-    ),
-    Transaction(
-      category: 'Transport',
-      subCategory: 'Bus',
-      name: 'BMTC Pass',
-      amount: 200,
-      date: DateTime.now().subtract(const Duration(days: 1)),
-      account: 'UPI',
-    ),
-    Transaction(
-      category: 'Utilities',
-      subCategory: 'Electricity',
-      name: 'BESCOM Bill',
-      amount: 800,
-      date: DateTime.now().subtract(const Duration(days: 8)),
-      account: 'Bank',
-    ),
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _loadTransactions();
+  }
 
-  void _addNewTransaction(Transaction newTxn) {
+  Future<void> _loadTransactions() async {
     setState(() {
-      allTransactions.insert(0, newTxn);
+      _isLoading = true;
     });
+
+    try {
+      final transactions = await DBHelper.instance.fetchTransactions();
+      setState(() {
+        allTransactions = transactions;
+      });
+      print('Loaded ${transactions.length} transactions');
+    } catch (e) {
+      print('Error loading transactions: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to load transactions: $e')),
+      );
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
   }
 
   List<Transaction> _filteredTransactions() {
@@ -58,9 +55,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return allTransactions.where((txn) {
       if (showWeekly) {
         final startOfWeek = now.subtract(Duration(days: now.weekday - 1));
-        return txn.date.isAfter(startOfWeek.subtract(const Duration(days: 1))) &&
-            txn.date.month == now.month &&
-            txn.date.year == now.year;
+        return txn.date.isAfter(startOfWeek.subtract(const Duration(days: 1)));
       } else {
         return txn.date.month == now.month && txn.date.year == now.year;
       }
@@ -69,7 +64,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   List<ChartData> _generateChartData(List<Transaction> txns) {
     final Map<String, double> categoryTotals = {};
-    for (var txn in txns) {
+
+    for (var txn in txns.where((t) => t.type == 'expense')) {
       categoryTotals[txn.category] =
           (categoryTotals[txn.category] ?? 0) + txn.amount;
     }
@@ -84,118 +80,211 @@ class _HomeScreenState extends State<HomeScreen> {
     final filteredTxns = _filteredTransactions();
     final chartData = _generateChartData(filteredTxns);
 
-
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
         title: const Text('Home'),
         backgroundColor: Colors.black,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _loadTransactions,
+            tooltip: 'Refresh transactions',
+          ),
+        ],
       ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                ExpensePieChart(
-                  chartData: chartData,
-                  showWeekly: showWeekly,
-                  onToggle: () {
-                    setState(() {
-                      showWeekly = !showWeekly;
-                    });
-                  },
-                ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : SafeArea(
+        child: RefreshIndicator(
+          onRefresh: _loadTransactions,
+          color: Colors.white,
+          backgroundColor: Colors.grey[900],
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Income vs Expense Card removed as requested
 
-                const SizedBox(height: 16),
-                const Text(
-                  'Income vs Expense',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
-                ),
+                  const SizedBox(height: 16),
 
-                const SizedBox(height: 30),
-                ElevatedButton(
-                  onPressed: () async {
-                    await FirebaseAuth.instance.signOut();
-                    await GoogleSignIn().signOut();
-                  },
-                  child: const Text('Logout'),
-                ),
-                const SizedBox(height: 20),
-                Text(
-                  showWeekly ? 'This Week\'s Transactions' : 'This Month\'s Transactions',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
+                  if (chartData.isEmpty)
+                    Container(
+                      height: 300,
+                      alignment: Alignment.center,
+                      child: const Text(
+                        'No expenses yet. Add one using the + button!',
+                        style: TextStyle(color: Colors.white70),
+                        textAlign: TextAlign.center,
+                      ),
+                    )
+                  else
+                    ExpensePieChart(
+                      chartData: chartData,
+                      showWeekly: showWeekly,
+                      onToggle: () {
+                        setState(() {
+                          showWeekly = !showWeekly;
+                        });
+                      },
+                    ),
+
+                  const SizedBox(height: 20),
+                  ElevatedButton(
+                    onPressed: () async {
+                      await FirebaseAuth.instance.signOut();
+                      await GoogleSignIn().signOut();
+                    },
+                    child: const Text('Logout'),
                   ),
-                ),
-                const SizedBox(height: 10),
-                ListView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: filteredTxns.length,
-                  itemBuilder: (context, index) {
-                    final txn = filteredTxns[index];
-                    return Card(
-                      color: Colors.grey[900],
-                      margin: const EdgeInsets.symmetric(vertical: 6),
-                      child: ListTile(
-                        onLongPress: () {
-                          setState(() {
-                            allTransactions.remove(txn);
-                          });
-                        },
-                        leading: const Icon(Icons.account_balance_wallet, color: Colors.white),
-                        title: Text(
-                          txn.name,
-                          style: const TextStyle(color: Colors.white),
+                  const SizedBox(height: 20),
+
+                  // Transactions Section with Tabs
+                  DefaultTabController(
+                    length: 2,
+                    child: Column(
+                      children: [
+                        TabBar(
+                          tabs: const [
+                            Tab(text: 'All Transactions'),
+                            Tab(text: 'Income Only'),
+                          ],
+                          indicator: BoxDecoration(
+                            borderRadius: BorderRadius.circular(50),
+                            color: Colors.grey[800],
+                          ),
+                          labelColor: Colors.white,
+                          unselectedLabelColor: Colors.grey,
                         ),
-                        subtitle: Text(
-                          '${txn.category} → ${txn.subCategory ?? "Other"}\n${DateFormat.yMMMd().format(txn.date)}',
-                          style: const TextStyle(color: Colors.grey),
-                        ),
-                        trailing: Text(
-                          '-₹${txn.amount.toStringAsFixed(0)}',
-                          style: const TextStyle(
-                            color: Colors.redAccent,
-                            fontWeight: FontWeight.bold,
+                        const SizedBox(height: 10),
+                        SizedBox(
+                          height: 400, // Set a fixed height for the TabBarView
+                          child: TabBarView(
+                            children: [
+                              // All Transactions Tab
+                              _buildTransactionList(filteredTxns),
+
+                              // Income Only Tab
+                              _buildTransactionList(
+                                filteredTxns.where((txn) => txn.type == 'income').toList(),
+                              ),
+                            ],
                           ),
                         ),
-                      ),
-                    );
-                  },
-                ),
-              ],
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
       ),
-      floatingActionButton: OpenContainer(
-        transitionType: ContainerTransitionType.fadeThrough,
-        transitionDuration: const Duration(milliseconds: 500),
-        openBuilder: (context, _) => const NewExpenseScreen(),
-        closedElevation: 6.0,
-        closedShape: const CircleBorder(),
-        closedColor: Colors.grey[400]!,
-        closedBuilder: (context, openContainer) {
-          return FloatingActionButton(
-            onPressed: openContainer,
-            backgroundColor: Colors.grey[400],
-            child: const Icon(Icons.add, color: Colors.black),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () async {
+          final result = await Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const NewExpenseScreen()),
           );
-        },
-        onClosed: (result) {
-          if (result != null && result is Transaction) {
-            _addNewTransaction(result);
+          if (result == true) {
+            _loadTransactions();
           }
         },
+        child: const Icon(Icons.add),
       ),
+    );
+  }
+
+  Widget _buildTransactionList(List<Transaction> transactions) {
+    if (transactions.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.symmetric(vertical: 20),
+        alignment: Alignment.center,
+        child: const Text(
+          'No transactions for this period',
+          style: TextStyle(color: Colors.white70),
+        ),
+      );
+    }
+
+    return ListView.builder(
+      shrinkWrap: true,
+      physics: const AlwaysScrollableScrollPhysics(),
+      itemCount: transactions.length,
+      itemBuilder: (context, index) {
+        final txn = transactions[index];
+        final bool isIncome = txn.type == 'income';
+
+        return Card(
+          color: Colors.grey[900],
+          margin: const EdgeInsets.symmetric(vertical: 6),
+          child: ListTile(
+            onLongPress: () async {
+              // Show confirmation dialog
+              final bool? result = await showDialog<bool>(
+                context: context,
+                builder: (BuildContext context) {
+                  return AlertDialog(
+                    title: const Text('Delete Transaction'),
+                    backgroundColor: Colors.grey[850],
+                    content: Text(
+                      'Are you sure you want to delete this ${txn.type}?',
+                      style: const TextStyle(color: Colors.white),
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.of(context).pop(false),
+                        child: const Text('Cancel'),
+                      ),
+                      TextButton(
+                        onPressed: () => Navigator.of(context).pop(true),
+                        child: const Text('Delete'),
+                      ),
+                    ],
+                  );
+                },
+              );
+
+              if (result == true) {
+                setState(() {
+                  allTransactions.remove(txn);
+                });
+                if (txn.id != null) {
+                  await DBHelper.instance.deleteTransaction(txn.id!);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Transaction deleted')),
+                  );
+                }
+              }
+            },
+            leading: CircleAvatar(
+              backgroundColor: isIncome ? Colors.green.withOpacity(0.2) : Colors.red.withOpacity(0.2),
+              child: Icon(
+                isIncome ? Icons.arrow_upward : Icons.arrow_downward,
+                color: isIncome ? Colors.green : Colors.red,
+              ),
+            ),
+            title: Text(
+              txn.name,
+              style: const TextStyle(color: Colors.white),
+            ),
+            subtitle: Text(
+              '${txn.category} ${txn.subCategory != null ? "→ ${txn.subCategory}" : ""}\n${DateFormat.yMMMd().format(txn.date)}',
+              style: const TextStyle(color: Colors.grey),
+            ),
+            trailing: Text(
+              '${isIncome ? "+" : "-"}₹${txn.amount.toStringAsFixed(0)}',
+              style: TextStyle(
+                color: isIncome ? Colors.green : Colors.redAccent,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }

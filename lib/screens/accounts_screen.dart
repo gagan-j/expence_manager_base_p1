@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import '../models/account.dart'; // Assuming you have the Account model here
+import '../models/account.dart';
+import '../db/db_helper.dart';
 
 class AccountsScreen extends StatefulWidget {
   const AccountsScreen({super.key});
@@ -9,10 +10,37 @@ class AccountsScreen extends StatefulWidget {
 }
 
 class _AccountsScreenState extends State<AccountsScreen> {
-  List<Account> accounts = [
-    Account(name: 'Cash', initialValue: 1000.0, accountGroup: 'Cash Group'),
-    Account(name: 'Bank Account', initialValue: 2000.0, accountGroup: 'Bank Group'),
-  ];
+  List<Account> accounts = [];
+  bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAccounts();
+  }
+
+  Future<void> _loadAccounts() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final fetchedAccounts = await DBHelper.instance.fetchAccounts();
+      setState(() {
+        accounts = fetchedAccounts;
+      });
+      print('Loaded ${accounts.length} accounts');
+    } catch (e) {
+      print('Error loading accounts: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to load accounts: $e')),
+      );
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
 
   double get netWorth {
     return accounts.fold(0, (sum, account) => sum + account.initialValue);
@@ -33,6 +61,7 @@ class _AccountsScreenState extends State<AccountsScreen> {
       builder: (context) {
         final TextEditingController _accountNameController = TextEditingController();
         final TextEditingController _accountBalanceController = TextEditingController();
+        final TextEditingController _accountGroupController = TextEditingController(text: 'Default Group');
 
         return AlertDialog(
           title: const Text("Add New Account"),
@@ -59,28 +88,49 @@ class _AccountsScreenState extends State<AccountsScreen> {
                   labelStyle: TextStyle(color: Colors.white70),
                 ),
               ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: _accountGroupController,
+                style: const TextStyle(color: Colors.white),
+                decoration: const InputDecoration(
+                  labelText: "Account Group",
+                  labelStyle: TextStyle(color: Colors.white70),
+                ),
+              ),
             ],
           ),
           actions: [
             TextButton(
-              onPressed: () {
+              onPressed: () async {
                 final String accountName = _accountNameController.text.trim();
                 final double initialBalance =
                     double.tryParse(_accountBalanceController.text) ?? 0.0;
+                final String accountGroup = _accountGroupController.text.trim();
 
-                if (accountName.isNotEmpty && initialBalance > 0) {
-                  setState(() {
-                    accounts.add(Account(
+                if (accountName.isNotEmpty) {
+                  try {
+                    final newAccount = Account(
                       name: accountName,
                       initialValue: initialBalance,
-                      accountGroup: 'Default Group', // Default accountGroup
-                    ));
-                  });
-                  Navigator.of(context).pop();
+                      accountGroup: accountGroup.isEmpty ? 'Default Group' : accountGroup,
+                    );
+
+                    // Save to database
+                    await DBHelper.instance.insertAccount(newAccount);
+
+                    // Refresh accounts list
+                    _loadAccounts();
+
+                    Navigator.of(context).pop();
+                  } catch (e) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Error adding account: $e')),
+                    );
+                  }
                 } else {
-                  // Add a message if balance is invalid
+                  // Add a message if name is invalid
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Please enter a valid account name and balance')),
+                    const SnackBar(content: Text('Please enter a valid account name')),
                   );
                 }
               },
@@ -98,74 +148,124 @@ class _AccountsScreenState extends State<AccountsScreen> {
       appBar: AppBar(
         title: const Text("Accounts"),
         backgroundColor: Colors.black,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _loadAccounts,
+            tooltip: 'Refresh accounts',
+          ),
+        ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Net Worth & Income/Expense/Total Row
-            Padding(
-              padding: const EdgeInsets.only(bottom: 20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    "Net Worth: ₹${netWorth.toStringAsFixed(2)}",
-                    style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Column(
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : RefreshIndicator(
+        onRefresh: _loadAccounts,
+        color: Colors.white,
+        backgroundColor: Colors.grey[900],
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Net Worth & Income/Expense/Total Row
+              Padding(
+                padding: const EdgeInsets.only(bottom: 20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "Net Worth: ₹${netWorth.toStringAsFixed(2)}",
+                      style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text("Income", style: TextStyle(color: Colors.white70)),
+                            Text("₹${totalIncome.toStringAsFixed(2)}", style: const TextStyle(color: Colors.green)),
+                          ],
+                        ),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            const Text("Expense", style: TextStyle(color: Colors.white70)),
+                            Text("₹${totalExpense.toStringAsFixed(2)}", style: const TextStyle(color: Colors.red)),
+                          ],
+                        ),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            const Text("Total", style: TextStyle(color: Colors.white70)),
+                            Text("₹${(netWorth + totalIncome - totalExpense).toStringAsFixed(2)}",
+                                style: const TextStyle(color: Colors.blue)),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+
+              accounts.isEmpty
+                  ? Container(
+                height: 200,
+                alignment: Alignment.center,
+                child: const Text(
+                  'No accounts yet. Add one using the + button!',
+                  style: TextStyle(color: Colors.white70),
+                  textAlign: TextAlign.center,
+                ),
+              )
+                  : ListView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: accounts.length,
+                itemBuilder: (context, index) {
+                  final account = accounts[index];
+                  return Card(
+                    color: Colors.grey[900],
+                    margin: const EdgeInsets.symmetric(vertical: 8),
+                    child: ListTile(
+                      title: Text(account.name, style: const TextStyle(color: Colors.white)),
+                      subtitle: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text("Income", style: TextStyle(color: Colors.white70)),
-                          Text("₹${totalIncome.toStringAsFixed(2)}", style: const TextStyle(color: Colors.green)),
+                          Text(
+                            'Balance: ₹${account.initialValue.toStringAsFixed(2)}',
+                            style: const TextStyle(color: Colors.white70),
+                          ),
+                          Text(
+                            'Group: ${account.accountGroup}',
+                            style: const TextStyle(color: Colors.white70),
+                          ),
                         ],
                       ),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          const Text("Expense", style: TextStyle(color: Colors.white70)),
-                          Text("₹${totalExpense.toStringAsFixed(2)}", style: const TextStyle(color: Colors.red)),
-                        ],
+                      isThreeLine: true,
+                      trailing: IconButton(
+                        icon: const Icon(Icons.delete, color: Colors.red),
+                        onPressed: () async {
+                          if (account.id != null) {
+                            try {
+                              await DBHelper.instance.deleteAccount(account.id!);
+                              _loadAccounts();
+                            } catch (e) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('Error deleting account: $e')),
+                              );
+                            }
+                          }
+                        },
                       ),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          const Text("Total", style: TextStyle(color: Colors.white70)),
-                          Text("₹${(netWorth + totalIncome - totalExpense).toStringAsFixed(2)}",
-                              style: const TextStyle(color: Colors.blue)),
-                        ],
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-
-            // List of Accounts
-            ListView.builder(
-              shrinkWrap: true,
-              itemCount: accounts.length,
-              itemBuilder: (context, index) {
-                final account = accounts[index];
-                return Card(
-                  color: Colors.grey[900],
-                  margin: const EdgeInsets.symmetric(vertical: 8),
-                  child: ListTile(
-                    title: Text(account.name, style: const TextStyle(color: Colors.white)),
-                    subtitle: Text(
-                      '₹${account.initialValue.toStringAsFixed(2)}',
-                      style: const TextStyle(color: Colors.white70),
                     ),
-                  ),
-                );
-              },
-            ),
-          ],
+                  );
+                },
+              ),
+            ],
+          ),
         ),
       ),
       floatingActionButton: FloatingActionButton(

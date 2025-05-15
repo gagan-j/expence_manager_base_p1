@@ -24,7 +24,7 @@ class DBHelper {
     final dbPath = await getDatabasesPath();
     final path = join(dbPath, 'expense_manager.db');
 
-    return openDatabase(path, version: 1, onCreate: (Database db, int version) async {
+    return openDatabase(path, version: 2, onCreate: (Database db, int version) async {
       await db.execute('''
         CREATE TABLE accounts (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -44,12 +44,19 @@ class DBHelper {
           amount REAL,
           date TEXT,
           description TEXT,
-          account TEXT
+          account TEXT,
+          type TEXT DEFAULT 'expense'
         )
       ''');
+    }, onUpgrade: (Database db, int oldVersion, int newVersion) async {
+      if (oldVersion < 2) {
+        // Add the type column to the transactions table if upgrading from version 1
+        await db.execute('ALTER TABLE transactions ADD COLUMN type TEXT DEFAULT "expense"');
+      }
     });
   }
 
+  // Methods for initial account setup
   Future<void> insertDefaultAccounts() async {
     final db = await instance.db;
 
@@ -64,34 +71,34 @@ class DBHelper {
       for (var account in defaultAccounts) {
         await db.insert('accounts', account.toMap());
       }
+      print('Default accounts inserted');
     }
   }
 
-  Future<void> insertTransaction(app_transaction.Transaction transaction) async {
+  // Methods for Transactions
+  Future<int> insertTransaction(app_transaction.Transaction transaction) async {
     final db = await instance.db;
-
-    final accountQuery = await db.query('accounts', where: 'name = ?', whereArgs: [transaction.account]);
-    if (accountQuery.isNotEmpty) {
-      final accountId = accountQuery.first['id'] as int;  // Cast the ID to int
-      final transactionMap = transaction.toMap();
-      transactionMap['account_id'] = accountId;
-      await db.insert('transactions', transactionMap);
-    }
+    final id = await db.insert('transactions', transaction.toMap());
+    print('${transaction.type.toUpperCase()} transaction inserted with id: $id');
+    return id;
   }
 
   Future<List<app_transaction.Transaction>> fetchTransactions() async {
     final db = await instance.db;
-    final res = await db.query('transactions');
+    final res = await db.query('transactions', orderBy: 'date DESC');
+    print('Fetched ${res.length} transactions from DB');
 
     return res.isNotEmpty
         ? res.map((txn) => app_transaction.Transaction(
-      category: txn['category'] as String, // Cast 'category' to String
-      subCategory: txn['subCategory'] as String?, // Cast to String? for nullable field
-      name: txn['name'] as String, // Cast 'name' to String
-      amount: txn['amount'] as double, // Cast 'amount' to double
-      date: DateTime.parse(txn['date'] as String), // Cast 'date' to String and parse it
-      description: txn['description'] as String?, // Cast 'description' to String?
-      account: txn['account'] as String, // Cast 'account' to String
+      id: txn['id'] as int?,
+      category: txn['category'] as String,
+      subCategory: txn['subCategory'] as String?,
+      name: txn['name'] as String,
+      amount: txn['amount'] as double,
+      date: DateTime.parse(txn['date'] as String),
+      description: txn['description'] as String?,
+      account: txn['account'] as String,
+      type: txn['type'] as String? ?? 'expense',
     )).toList()
         : [];
   }
@@ -99,5 +106,49 @@ class DBHelper {
   Future<void> deleteTransaction(int id) async {
     final db = await instance.db;
     await db.delete('transactions', where: 'id = ?', whereArgs: [id]);
+    print('Transaction with id: $id deleted');
+  }
+
+  // Methods for Accounts
+  Future<int> insertAccount(Account account) async {
+    final db = await instance.db;
+    final result = await db.insert('accounts', account.toMap());
+    print('Account inserted with id: $result');
+    return result;
+  }
+
+  Future<List<Account>> fetchAccounts() async {
+    final db = await instance.db;
+    final res = await db.query('accounts');
+    print('Fetched ${res.length} accounts from DB');
+
+    return res.isNotEmpty
+        ? res.map((acc) => Account(
+      id: acc['id'] as int?,
+      name: acc['name'] as String,
+      initialValue: acc['initialValue'] as double,
+      accountGroup: acc['account_group'] as String,
+      subgroup: acc['subgroup'] as String?,
+    )).toList()
+        : [];
+  }
+
+  Future<void> deleteAccount(int id) async {
+    final db = await instance.db;
+    await db.delete('accounts', where: 'id = ?', whereArgs: [id]);
+    print('Account with id: $id deleted');
+  }
+
+  Future<void> updateAccount(Account account) async {
+    final db = await instance.db;
+    if (account.id != null) {
+      await db.update(
+        'accounts',
+        account.toMap(),
+        where: 'id = ?',
+        whereArgs: [account.id],
+      );
+      print('Account with id: ${account.id} updated');
+    }
   }
 }

@@ -3,10 +3,18 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'screens/login_screen.dart';
 import 'screens/main_navigation.dart';
+import 'db/db_helper.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
+
+  // Initialize database
+  print('Initializing database...');
+  await DBHelper.instance.db;
+  await DBHelper.instance.insertDefaultAccounts();
+  print('Database initialized successfully');
+
   runApp(const MyApp());
 }
 
