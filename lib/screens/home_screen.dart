@@ -3,6 +3,8 @@ import 'package:intl/intl.dart';
 import '../models/transaction.dart';
 import '../services/transaction_service.dart';
 import 'new_expense_screen.dart';
+import 'package:animations/animations.dart';
+import 'new_expense_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
@@ -281,7 +283,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
             const SizedBox(height: 16),
 
-            // Transaction list
+
             Expanded(
               child: _transactions.isEmpty
                   ? Center(
@@ -302,23 +304,40 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    ElevatedButton(
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const NewExpenseScreen(),
-                          ),
-                        ).then((_) => _loadData());
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.deepPurple,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                      ),
-                      child: const Text('Add Transaction',style: TextStyle(color: Colors.white),),
+                // Inside your home_screen.dart file, find the ElevatedButton in the "No transactions found" section
+
+
+// Then replace the existing ElevatedButton with:
+              OpenContainer(
+                transitionType: ContainerTransitionType.fade,
+                transitionDuration: const Duration(milliseconds: 500),
+                closedElevation: 0,
+                closedShape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                closedColor: Colors.deepPurple,
+                closedBuilder: (context, openContainer) {
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: const [
+                        Icon(Icons.add, color: Colors.white),
+                        SizedBox(width: 8),
+                        Text('Add Transaction', style: TextStyle(color: Colors.white)),
+                      ],
                     ),
+                  );
+                },
+                openBuilder: (context, _) {
+                  return const NewExpenseScreen();
+                },
+                onClosed: (value) {
+                  if (value == true) {
+                    _loadData(); // Call your existing _loadData method
+                  }
+                },
+              ),
                   ],
                 ),
               )

@@ -13,9 +13,6 @@ void main() async {
   // Initialize the transaction service
   await TransactionService().initialize();
 
-  // Comment out the notification service
-  // await NotificationService().init();
-
   runApp(const MyApp());
 }
 
@@ -33,6 +30,8 @@ class MyApp extends StatelessWidget {
           primary: Colors.deepPurple,
           secondary: Colors.deepPurpleAccent,
         ),
+        // We'll use the standard page transitions instead of custom ones here
+        // Remove the custom page transitions theme that was causing errors
       ),
       home: StreamBuilder<User?>(
         stream: FirebaseAuth.instance.authStateChanges(),
@@ -51,4 +50,3 @@ class MyApp extends StatelessWidget {
     );
   }
 }
-
